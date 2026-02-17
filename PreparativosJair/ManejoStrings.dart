@@ -36,8 +36,10 @@ void main(){
   print("Ejemplo 3 de uso de contains, busca caracter o palabra dentro de una variable de texto (u) ${palabra.contains("u")}");
   print("Ejemplo de como incia una variable ${palabra3.startsWith("O")}");
   print("Ejemplo de como termina una variable ${palabra3.endsWith("l")}");
-  print("Ejmplo de busqueda de palabras en especifico dentro de string (Segunda) ${palabra5.indexOf("Segunda")}");
-  print("Ejmplo de chars especificos dentro de string ${palabra5.substring(0,9)}");
-  print("Ejmplo de chars o textos especificos dentro de string (a) ${palabra5.split("a")}");
-  print("Ejmplo de chars o textos especificos dentro de string (linea) ${palabra5.split("linea")}");
+  print("Ejemplo de busqueda de palabras en especifico dentro de string (Segunda) ${palabra5.indexOf("Segunda")}");
+  print("Ejemplo de chars especificos dentro de string ${palabra5.substring(0,9)}");
+  print("Ejemplo de chars o textos especificos dentro de string (a) ${palabra5.split("a")}");
+  print("Ejemplo de chars o textos especificos dentro de string (linea) ${palabra5.split("linea")}");
+  print("Ejemplo de poner todo en mayusulas con toUpperCase: ${palabra4.toUpperCase()}");
+  print("Ejemplo de poner todo en minusculas con toLowerCase: ${palabra4.toLowerCase()}");
 }
