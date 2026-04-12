@@ -17,5 +17,10 @@ void main(){
   print(PI);
   print(edad_1);
   print(_precio);
+  
+  //extras
+  print(aCTivo);
+  print(Codigo);
+  print(ValorFijo);
 
 }
