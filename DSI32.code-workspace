@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../Wemp/nginx/html/DSI32"
+		},
+		{
+			"path": ".."
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Semestre 4"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "DSI32"
+	}
+}

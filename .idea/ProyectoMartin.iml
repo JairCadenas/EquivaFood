@@ -2,7 +2,14 @@
 <module type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/equivafood/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/equivafood/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/equivafood/build" />
+      <excludeFolder url="file://$MODULE_DIR$/fluttelogin/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/fluttelogin/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/fluttelogin/build" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
