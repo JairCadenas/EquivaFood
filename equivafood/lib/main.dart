@@ -1,17 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'Registro.dart';
+import 'RecuperarContrasena.dart';
+import 'PantallaPrincipal.dart';
 import 'api_service.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  // 1. Aseguramos que Flutter esté listo
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 2. Cargamos variables desde assets/.env
+  try {
+    await dotenv.load(fileName: "assets/.env");
+  } catch (e) {
+    debugPrint(
+      "Error crítico: No se encontró assets/.env. Revisa pubspec.yaml",
+    );
+  }
+
+  // 3. Inicializamos Supabase usando las variables del archivo .env
+  await Supabase.initialize(
+    url: dotenv.get('SUPABASE_URL'),
+    anonKey: dotenv.get('SUPABASE_ANON_KEY'),
+  );
+
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'EquivaFood',
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+      theme: ThemeData(
+        primaryColor: const Color(0xFF33D1C1),
+        useMaterial3: true,
+      ),
+      home: const LoginScreen(),
     );
   }
 }
@@ -24,13 +53,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para leer el texto de los campos
-  final _correoController    = TextEditingController();
-  final _passwordController  = TextEditingController();
-
-  // Clave del formulario para validación
+  final _correoController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-
   bool _isLoading = false;
 
   @override
@@ -40,36 +65,27 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ── FUNCIÓN DE LOGIN ─────────────────────────────────────────────────────────
   Future<void> _handleLogin() async {
-    // Valida los campos antes de hacer la petición
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.login(
-        correo:   _correoController.text.trim(),
+      await ApiService.login(
+        correo: _correoController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // ✅ Login exitoso
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('¡Bienvenido, ${result['nombre']}!'),
-          backgroundColor: const Color(0xFF33D1C1),
-        ),
+      // Navegación limpia a la pantalla principal
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PantallaPrincipal()),
+        (route) => false,
       );
-
-      // TODO: Navega a tu pantalla principal aquí, por ejemplo:
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-
     } catch (e) {
       if (!mounted) return;
-
-      // ❌ Error de login
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
@@ -81,158 +97,161 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF33D1C1);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Form(
             key: _formKey,
             child: Column(
               children: [
-                const SizedBox(height: 80),
-
-                // --- LOGO ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'EquivaFood',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Image.asset('assets/Logo.png', width: 50, height: 50),
-                  ],
+                const SizedBox(height: 50),
+                // Asegúrate de que Logo.png esté en la carpeta assets
+                Image.asset(
+                  'assets/Logo.png',
+                  height: 150,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.fastfood,
+                      size: 100,
+                      color: primaryColor,
+                    );
+                  },
                 ),
+                const SizedBox(height: 20),
+                const Text(
+                  'EquivaFood',
+                  style: TextStyle(
+                    fontSize: 35,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 40),
 
-                const SizedBox(height: 60),
-
-                // --- CAMPO CORREO ---
+                // Campo Correo
                 TextFormField(
                   controller: _correoController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    hintText: 'Ingresa tu correo (nombre de usuario)',
-                    hintStyle: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
+                  decoration: InputDecoration(
+                    labelText: 'Correo electrónico',
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: primaryColor,
                     ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: const BorderSide(
+                        color: primaryColor,
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu correo';
-                    }
+                    if (value == null || value.isEmpty)
+                      return 'Ingrese su correo';
+                    if (!value.contains('@')) return 'Ingrese un correo válido';
                     return null;
                   },
                 ),
+                const SizedBox(height: 20),
 
-                const SizedBox(height: 40),
-
-                // --- CAMPO CONTRASEÑA ---
+                // Campo Contraseña
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    hintText: 'Ingresa tu contraseña',
-                    hintStyle: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey,
+                  decoration: InputDecoration(
+                    labelText: 'Contraseña',
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: primaryColor,
                     ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: const BorderSide(
+                        color: primaryColor,
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu contraseña';
-                    }
+                    if (value == null || value.isEmpty)
+                      return 'Ingrese su contraseña';
+                    if (value.length < 8) return 'Mínimo 8 caracteres';
                     return null;
                   },
                 ),
 
-                const SizedBox(height: 20),
-
-                // --- BOTONES DE TEXTO ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegistroScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Nuevo usuario',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecuperarContrasenaScreen(),
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        // TODO: pantalla de recuperar contraseña
-                      },
-                      child: const Text(
-                        '¿Olvidé mi contraseña?',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    child: const Text(
+                      '¿Olvidé mi contraseña?',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
+                  ),
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 30),
 
-                // --- BOTÓN INICIAR SESIÓN ---
+                // Botón Iniciar Sesión
                 SizedBox(
-                  width: 250,
+                  width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF33D1C1),
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
+                      elevation: 3,
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
                             'Iniciar sesión',
                             style: TextStyle(
                               fontSize: 18,
-                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
+
+                TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegistroScreen()),
+                  ),
+                  child: const Text(
+                    '¿No tienes cuenta? Regístrate aquí',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ),
               ],
             ),
           ),

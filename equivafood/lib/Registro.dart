@@ -9,16 +9,15 @@ class RegistroScreen extends StatefulWidget {
 }
 
 class _RegistroScreenState extends State<RegistroScreen> {
-  // Controladores
-  final _nombreController    = TextEditingController();
-  final _edadController      = TextEditingController();
-  final _pesoController      = TextEditingController();
-  final _estaturaController  = TextEditingController();
-  final _correoController    = TextEditingController();
-  final _passwordController  = TextEditingController();
+  final _nombreController = TextEditingController();
+  final _edadController = TextEditingController();
+  final _pesoController = TextEditingController();
+  final _estaturaController = TextEditingController();
+  final _correoController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  final _formKey   = GlobalKey<FormState>();
-  bool _isLoading  = false;
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -31,7 +30,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.dispose();
   }
 
-  // ── FUNCIÓN DE REGISTRO ──────────────────────────────────────────────────────
   Future<void> _handleRegistro() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -39,17 +37,18 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     try {
       final result = await ApiService.registro(
-        nombre:   _nombreController.text.trim(),
-        edad:     int.parse(_edadController.text.trim()),
-        peso:     double.parse(_pesoController.text.trim()),
-        estatura: double.parse(_estaturaController.text.trim()),
-        correo:   _correoController.text.trim(),
+        nombre: _nombreController.text.trim(),
+        edad: int.parse(_edadController.text.trim()),
+        peso: double.parse(_pesoController.text.trim().replaceAll(',', '.')),
+        estatura: double.parse(
+          _estaturaController.text.trim().replaceAll(',', '.'),
+        ),
+        correo: _correoController.text.trim().toLowerCase(),
         password: _passwordController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // ✅ Registro exitoso
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('¡Cuenta creada! Bienvenido, ${result['nombre']}'),
@@ -57,13 +56,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ),
       );
 
-      // Regresa al login después del registro
       Navigator.pop(context);
-
     } catch (e) {
       if (!mounted) return;
-
-      // ❌ Error de registro
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
@@ -75,7 +70,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     }
   }
 
-  // ── HELPER: Campo de texto reutilizable ──────────────────────────────────────
   Widget _buildField({
     required TextEditingController controller,
     required String hint,
@@ -96,22 +90,27 @@ class _RegistroScreenState extends State<RegistroScreen> {
         enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.grey),
         ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: Color(0xFF33D1C1)),
+        ),
       ),
-      validator: validator ??
-          (value) {
-            if (value == null || value.isEmpty) return 'Este campo es requerido';
-            return null;
-          },
+      validator:
+          validator ??
+          (value) => (value == null || value.isEmpty) ? 'Requerido' : null,
     );
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF33D1C1);
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
@@ -119,57 +118,52 @@ class _RegistroScreenState extends State<RegistroScreen> {
             key: _formKey,
             child: Column(
               children: [
-                const SizedBox(height: 50),
-
-                // --- ICONO DE PERFIL ---
-                const Center(
-                  child: Icon(
-                    Icons.account_circle,
-                    size: 130,
-                    color: Colors.black,
-                  ),
+                const Icon(
+                  Icons.account_circle,
+                  size: 100,
+                  color: Colors.black,
                 ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Crear Nueva Cuenta",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 30),
 
-                const SizedBox(height: 40),
-
-                // --- NOMBRE ---
                 _buildField(
                   controller: _nombreController,
                   hint: 'Nombre completo',
                 ),
+                const SizedBox(height: 15),
 
-                const SizedBox(height: 20),
-
-                // --- CORREO ---
                 _buildField(
                   controller: _correoController,
-                  hint: 'Correo electrónico (nombre de usuario)',
+                  hint: 'Correo electrónico',
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa tu correo';
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                    if (!emailRegex.hasMatch(value)) return 'Correo no válido';
+                    if (value == null || value.isEmpty)
+                      return 'Ingresa tu correo';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                      return 'Correo no válido';
                     return null;
                   },
                 ),
+                const SizedBox(height: 15),
 
-                const SizedBox(height: 20),
-
-                // --- CONTRASEÑA ---
                 _buildField(
                   controller: _passwordController,
                   hint: 'Contraseña',
                   obscure: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa una contraseña';
-                    if (value.length < 4) return 'Mínimo 4 caracteres';
+                    if (value == null || value.isEmpty)
+                      return 'Ingresa una contraseña';
+                    if (value.length < 8)
+                      return 'Mínimo 8 caracteres'; // ESTANDARIZADO
                     return null;
                   },
                 ),
+                const SizedBox(height: 15),
 
-                const SizedBox(height: 20),
-
-                // --- EDAD, PESO, ESTATURA en una fila ---
                 Row(
                   children: [
                     Expanded(
@@ -177,37 +171,22 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         controller: _edadController,
                         hint: 'Edad',
                         keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Requerido';
-                          if (int.tryParse(value) == null) return 'Número entero';
-                          return null;
-                        },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _buildField(
                         controller: _pesoController,
                         hint: 'Peso (kg)',
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Requerido';
-                          if (double.tryParse(value) == null) return 'Número válido';
-                          return null;
-                        },
+                        keyboardType: TextInputType.number,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _buildField(
                         controller: _estaturaController,
                         hint: 'Estatura (m)',
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Requerido';
-                          if (double.tryParse(value) == null) return 'Número válido';
-                          return null;
-                        },
+                        keyboardType: TextInputType.number,
                       ),
                     ),
                   ],
@@ -215,70 +194,30 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
                 const SizedBox(height: 50),
 
-                // --- BOTONES ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    // REGRESAR
-                    SizedBox(
-                      width: 140,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 3,
-                        ),
-                        child: const Text(
-                          'Regresar',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleRegistro,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
                       ),
                     ),
-
-                    // CREAR
-                    SizedBox(
-                      width: 140,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleRegistro,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Registrarme',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          elevation: 3,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : const Text(
-                                'Crear',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
               ],
             ),
           ),
