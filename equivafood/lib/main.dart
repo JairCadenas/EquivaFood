@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Importa tus archivos
 import 'Registro.dart';
 import 'RecuperarContrasena.dart';
 import 'PantallaPrincipal.dart';
@@ -25,11 +28,18 @@ void main() async {
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
   );
 
-  runApp(const MyApp());
+  // 4. VERIFICAR SI YA HAY UNA SESIÓN INICIADA
+  final prefs = await SharedPreferences.getInstance();
+  final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+  // 5. Arrancamos la app pasando el estado del login
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +50,8 @@ class MyApp extends StatelessWidget {
         primaryColor: const Color(0xFF33D1C1),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      // Si está logueado va directo a la Principal, si no, al Login
+      home: isLoggedIn ? const PantallaPrincipal() : const LoginScreen(),
     );
   }
 }
@@ -71,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Intentamos el login a través de ApiService
       await ApiService.login(
         correo: _correoController.text.trim(),
         password: _passwordController.text.trim(),
@@ -78,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // Navegación limpia a la pantalla principal
+      // Navegación limpia: reemplaza el login por la pantalla principal
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const PantallaPrincipal()),
@@ -111,7 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 50),
-                // Asegúrate de que Logo.png esté en la carpeta assets
                 Image.asset(
                   'assets/Logo.png',
                   height: 150,
@@ -147,13 +158,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(
-                        color: primaryColor,
-                        width: 2,
-                      ),
-                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
@@ -176,13 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(15),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(
-                        color: primaryColor,
-                        width: 2,
-                      ),
                     ),
                   ),
                   validator: (value) {

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static final _supabase = Supabase.instance.client;
@@ -26,6 +27,21 @@ class ApiService {
       if (data == null) {
         throw Exception('Correo o contraseña incorrectos');
       }
+
+      //  Guardar la sesión en el teléfono
+      final prefs = await SharedPreferences.getInstance();
+
+      // Guardamos que ya está logueado
+      await prefs.setBool('isLoggedIn', true);
+
+      // Guardamos sus datos para mostrarlos en la Pantalla Principal
+      await prefs.setString('userName', data['nombre'] ?? 'Usuario');
+      await prefs.setString('userEmail', data['correo'] ?? '');
+      await prefs.setString('userPeso', data['peso']?.toString() ?? '0');
+      await prefs.setString(
+        'userEstatura',
+        data['estatura']?.toString() ?? '0',
+      );
 
       return data;
     } catch (e) {
@@ -149,6 +165,36 @@ class ApiService {
       await _supabase.from('codigorecuperacion').delete().eq('correo', correo);
     } catch (e) {
       throw Exception('No se pudo cambiar la contraseña: $e');
+    }
+  }
+
+  // ── ACTUALIZAR PERFIL ──────────────────────────────────────────────────────
+  static Future<void> actualizarPerfil({
+    required String correo,
+    required String nombre,
+    required int edad,
+    required double peso,
+    required double estatura,
+  }) async {
+    try {
+      // 1. Actualizar en Supabase
+      await _supabase
+          .from('usuario')
+          .update({
+            'nombre': nombre,
+            'edad': edad,
+            'peso': peso,
+            'estatura': estatura,
+          })
+          .eq('correo', correo);
+
+      // 2. Actualizar las preferencias locales para que la pantalla principal se refresque
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userName', nombre);
+      await prefs.setString('userPeso', peso.toString());
+      await prefs.setString('userEstatura', estatura.toString());
+    } catch (e) {
+      throw Exception('Error al actualizar el perfil: $e');
     }
   }
 }
