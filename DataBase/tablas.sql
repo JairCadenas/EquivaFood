@@ -90,3 +90,8 @@ ALTER TABLE Equivalencia
 ALTER TABLE RestriccionAlimenticia
     ADD CONSTRAINT fk_restriccion_usuario
     FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario);
+
+ALTER TABLE Usuario 
+ADD COLUMN avatar_url TEXT;
+ALTER TABLE Usuario 
+ALTER COLUMN planAlimentario DROP NOT NULL;

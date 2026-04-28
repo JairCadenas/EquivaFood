@@ -1,4 +1,6 @@
+import 'dart:io'; // 1. Añadido para manejar el archivo de imagen
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // 2. Añadido para elegir la foto
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_service.dart';
@@ -19,6 +21,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   final _estaturaController = TextEditingController();
 
   String _correoUsuario = '';
+  String? _avatarUrl; // 3. Variable para la URL de Supabase
+  File? _imageFile; // 4. Variable para la foto nueva seleccionada
   bool _isLoading = false;
   bool _isLoadingData = true;
 
@@ -56,6 +60,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
         _edadController.text = data['edad']?.toString() ?? '';
         _pesoController.text = data['peso']?.toString() ?? '';
         _estaturaController.text = data['estatura']?.toString() ?? '';
+        _avatarUrl =
+            data['avatar_url']; // 5. Cargamos la URL de la imagen si existe
         _isLoadingData = false;
       });
     } catch (e) {
@@ -70,6 +76,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
+  // 6. Nuevo método para seleccionar la imagen de la galería
+  Future<void> _seleccionarImagen() async {
+    final picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   // Guardar los cambios realizados
   Future<void> _guardarCambios() async {
     if (!_formKey.currentState!.validate()) return;
@@ -77,6 +98,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // 7. Lógica de subida de imagen
+      String? nuevaUrl = _avatarUrl;
+      if (_imageFile != null) {
+        nuevaUrl = await ApiService.subirImagen(_imageFile!, _correoUsuario);
+      }
+
       await ApiService.actualizarPerfil(
         correo: _correoUsuario,
         nombre: _nombreController.text.trim(),
@@ -85,6 +112,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         estatura: double.parse(
           _estaturaController.text.trim().replaceAll(',', '.'),
         ),
+        avatarUrl: nuevaUrl, // 8. Pasamos la URL al ApiService
       );
 
       if (!mounted) return;
@@ -96,7 +124,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
       );
 
-      // Regresar a la pantalla anterior (PantallaPrincipal) y forzar que se reconstruya
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -160,10 +187,47 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    const CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Color(0xFFF5F5F5),
-                      child: Icon(Icons.person, size: 60, color: Colors.grey),
+                    // 9. Modificamos el CircleAvatar para que sea interactivo
+                    GestureDetector(
+                      onTap: _seleccionarImagen,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 55,
+                            backgroundColor: const Color(0xFFF5F5F5),
+                            backgroundImage: _imageFile != null
+                                ? FileImage(_imageFile!) // Si eligió una nueva
+                                : (_avatarUrl != null
+                                      ? NetworkImage(
+                                          _avatarUrl!,
+                                        ) // Si ya tenía una en Supabase
+                                      : null),
+                            child: (_imageFile == null && _avatarUrl == null)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(

@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'api_service.dart';
 
 class RegistroScreen extends StatefulWidget {
@@ -19,6 +21,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  // Variables para la gestion de la imagen de perfil
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void dispose() {
     _nombreController.dispose();
@@ -30,12 +36,37 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.dispose();
   }
 
+  // Permite al usuario seleccionar una imagen de la galeria
+  Future<void> _seleccionarImagen() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50, // Reduccion de calidad para optimizar el almacenamiento
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _handleRegistro() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      String? avatarUrl;
+
+      // Proceso de subida de imagen a Supabase Storage antes de crear el registro del usuario
+      if (_imageFile != null) {
+        avatarUrl = await ApiService.subirImagen(
+          _imageFile!,
+          _correoController.text.trim().toLowerCase(),
+        );
+      }
+
+      // Creacion del registro en la base de datos incluyendo la URL del avatar
       final result = await ApiService.registro(
         nombre: _nombreController.text.trim(),
         edad: int.parse(_edadController.text.trim()),
@@ -45,6 +76,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ),
         correo: _correoController.text.trim().toLowerCase(),
         password: _passwordController.text.trim(),
+        avatarUrl: avatarUrl, // Se añade el parametro opcional de la URL
       );
 
       if (!mounted) return;
@@ -70,6 +102,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     }
   }
 
+  // Helper para campos de texto
   Widget _buildField({
     required TextEditingController controller,
     required String hint,
@@ -118,10 +151,23 @@ class _RegistroScreenState extends State<RegistroScreen> {
             key: _formKey,
             child: Column(
               children: [
-                const Icon(
-                  Icons.account_circle,
-                  size: 100,
-                  color: Colors.black,
+                // Cabecera interactiva para seleccion de imagen
+                GestureDetector(
+                  onTap: _seleccionarImagen,
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: _imageFile != null
+                        ? FileImage(_imageFile!)
+                        : null,
+                    child: _imageFile == null
+                        ? const Icon(
+                            Icons.add_a_photo,
+                            size: 40,
+                            color: Colors.grey,
+                          )
+                        : null,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -157,8 +203,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   validator: (value) {
                     if (value == null || value.isEmpty)
                       return 'Ingresa una contraseña';
-                    if (value.length < 8)
-                      return 'Mínimo 8 caracteres'; // ESTANDARIZADO
+                    if (value.length < 8) return 'Mínimo 8 caracteres';
                     return null;
                   },
                 ),

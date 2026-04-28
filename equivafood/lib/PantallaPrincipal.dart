@@ -6,14 +6,29 @@ import 'PlanAlimenticio.dart';
 import 'Perfil.dart';
 import 'Ayuda.dart';
 
-class PantallaPrincipal extends StatelessWidget {
+// Se cambia a StatefulWidget para permitir el redibujo de la interfaz
+// cuando el usuario regrese de la pantalla de perfil tras actualizar sus datos.
+class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
 
+  @override
+  State<PantallaPrincipal> createState() => _PantallaPrincipalState();
+}
+
+class _PantallaPrincipalState extends State<PantallaPrincipal> {
+  // Metodo para disparar el rediseño de la pantalla.
+  // Al llamar a setState, el FutureBuilder vuelve a ejecutar la peticion a Supabase.
+  void _refrescarDatos() {
+    setState(() {});
+  }
+
+  // Obtiene los datos actualizados del usuario desde la base de datos de Supabase.
+  // Se utiliza el correo guardado en SharedPreferences como identificador unico.
   Future<Map<String, dynamic>> _getDatosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
     final String? email = prefs.getString('userEmail');
 
-    if (email == null) throw Exception("Sesión no encontrada");
+    if (email == null) throw Exception("Sesion no encontrada");
 
     final data = await Supabase.instance.client
         .from('usuario')
@@ -24,6 +39,7 @@ class PantallaPrincipal extends StatelessWidget {
     return data;
   }
 
+  // Elimina los datos locales y redirige al usuario a la pantalla de login.
   Future<void> _cerrarSesion(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -44,12 +60,11 @@ class PantallaPrincipal extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // ✅ CAMBIO: Ahora usamos el Logo.png en lugar del icono de balanza
         title: Row(
           children: [
             Image.asset(
               'assets/Logo.png',
-              height: 40, // Ajusta el tamaño según necesites
+              height: 40,
               errorBuilder: (context, error, stackTrace) =>
                   const Icon(Icons.fastfood, color: primaryColor),
             ),
@@ -69,17 +84,21 @@ class PantallaPrincipal extends StatelessWidget {
       body: FutureBuilder<Map<String, dynamic>>(
         future: _getDatosUsuario(),
         builder: (context, snapshot) {
+          // Manejo del estado de carga de la peticion asincrona.
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: primaryColor),
             );
           }
 
+          // Manejo de errores en caso de fallo de red o consulta.
           if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
 
           final user = snapshot.data!;
+          // Recuperacion de la URL de imagen guardada en la columna avatar_url.
+          final String? avatarUrl = user['avatar_url'];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -87,21 +106,38 @@ class PantallaPrincipal extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 10),
-                // --- CABECERA DE USUARIO ---
+                // Seccion de encabezado con informacion de perfil.
                 Row(
                   children: [
-                    // ✅ CAMBIO: La imagen de perfil ahora es un botón que lleva a Perfil.dart
                     GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PerfilScreen()),
-                      ),
-                      child: const CircleAvatar(
+                      // Se captura el resultado de la navegacion. Si la pantalla de perfil
+                      // retorna 'true' al cerrarse, se actualiza la pantalla principal.
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PerfilScreen(),
+                          ),
+                        );
+                        if (result == true) _refrescarDatos();
+                      },
+                      child: CircleAvatar(
                         radius: 30,
-                        backgroundColor: Color(0xFFF5F5F5),
-                        child: Icon(Icons.person, color: Colors.grey, size: 35),
-                        // Nota: Cuando implementes la subida de imagen,
-                        // aquí usarás NetworkImage con la URL de Supabase
+                        backgroundColor: const Color(0xFFF5F5F5),
+                        // Carga la imagen desde la red si la URL existe en la base de datos.
+                        // En caso contrario, no se asigna imagen de fondo para mostrar el child.
+                        backgroundImage:
+                            (avatarUrl != null && avatarUrl.isNotEmpty)
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        // Muestra un icono de marcador de posicion si no hay imagen de perfil.
+                        child: (avatarUrl == null || avatarUrl.isEmpty)
+                            ? const Icon(
+                                Icons.person,
+                                color: Colors.grey,
+                                size: 35,
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -126,18 +162,12 @@ class PantallaPrincipal extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // ICONOS DE NAVEGACIÓN SUPERIOR
+                    // Botones de acceso rapido a otras funciones del sistema.
                     _buildIconBtn(
                       context,
                       Icons.menu_book,
                       primaryColor,
                       const PlanAlimenticioScreen(),
-                    ),
-                    _buildIconBtn(
-                      context,
-                      Icons.person_outline,
-                      primaryColor,
-                      const PerfilScreen(),
                     ),
                     _buildIconBtn(
                       context,
@@ -160,6 +190,7 @@ class PantallaPrincipal extends StatelessWidget {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 15),
+                // Lista de tarjetas para el seguimiento de la dieta.
                 _mealCard("Desayuno"),
                 _mealCard("Colación"),
                 _mealCard("Comida"),
@@ -173,6 +204,7 @@ class PantallaPrincipal extends StatelessWidget {
     );
   }
 
+  // Helper para construir botones de iconos con navegacion asincrona para refresco.
   Widget _buildIconBtn(
     BuildContext context,
     IconData icon,
@@ -180,14 +212,20 @@ class PantallaPrincipal extends StatelessWidget {
     Widget screen,
   ) {
     return IconButton(
-      onPressed: () =>
-          Navigator.push(context, MaterialPageRoute(builder: (_) => screen)),
+      onPressed: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => screen),
+        );
+        if (result == true) _refrescarDatos();
+      },
       icon: Icon(icon, color: color, size: 24),
       constraints: const BoxConstraints(),
       padding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 
+  // Helper para construir las tarjetas visuales de las comidas.
   Widget _mealCard(String title) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
