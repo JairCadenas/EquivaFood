@@ -23,26 +23,9 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
 **Acciones Requeridas:**
 
 1. Rotar inmediatamente todas las credenciales comprometidas en Supabase y el servicio de correo
-2. Crear un archivo `.env.example` con nombres de variables sin valores:
-   ```
-   SMTP_EMAIL=
-   SMTP_PASSWORD=
-   SUPABASE_URL=
-   SUPABASE_ANON_KEY=
-   ```
-3. Añadir exclusiones al archivo `equivafood/.gitignore`:
-   ```
-   # Environment variables
-   .env
-   .env.local
-   .env.*.local
-   assets/.env
-   ```
-4. Eliminar el archivo `equivafood/assets/.env` del repositorio:
-   ```bash
-   git rm --cached equivafood/assets/.env
-   git commit -m "Remove: credenciales expuestas del repositorio"
-   ```
+2. ✓ Crear un archivo `.env.example` con nombres de variables sin valores
+3. ✓ Añadir exclusiones al archivo `equivafood/.gitignore`
+4. ✓ Eliminar el archivo `equivafood/assets/.env` del repositorio
 5. Limpiar el historial de git para eliminar referencias al archivo
 6. Documentar en el README.md las instrucciones para configurar variables de entorno localmente
 7. Implementar validación en `main.dart` para verificar que las variables de entorno existen antes de iniciar la aplicación
@@ -76,8 +59,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
    Practicas*/
    ```
 
-**Tiempo Estimado:** 30 minutos
-
 ### 2.2 Remover Proyectos Flutter Duplicados
 
 **Descripción del Problema:**
@@ -93,8 +74,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
    git rm -r fluttelogin
    git commit -m "Remove: proyecto Flutter duplicado (fluttelogin)"
    ```
-
-**Tiempo Estimado:** 15 minutos
 
 ### 2.3 Limpiar Archivos Sueltos en la Raíz
 
@@ -127,8 +106,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
 
 4. Crear un README.md adecuado (ver Prioridad 3)
 
-**Tiempo Estimado:** 20 minutos
-
 ### 2.4 Organizar Base de Datos
 
 **Descripción del Problema:**
@@ -140,8 +117,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
 1. Revisar contenido de `DataBase/tablas.sql`
 2. Documentar la estructura de base de datos en el README.md o crear wiki
 3. Considerar si estos scripts deben estar en la raíz del proyecto o en documentación
-
-**Tiempo Estimado:** 30 minutos
 
 ---
 
@@ -194,8 +169,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
    git commit -m "Refactor: renombrar archivos a convención snake_case"
    ```
 
-**Tiempo Estimado:** 1 hora (incluyendo búsqueda y actualización de importaciones)
-
 ### 3.2 Reorganizar Estructura de Carpetas
 
 **Descripción del Problema:**
@@ -228,8 +201,6 @@ lib/
 2. Mover y renombrar archivos según la nueva estructura
 3. Actualizar todas las importaciones
 4. Hacer commit
-
-**Tiempo Estimado:** 2-3 horas
 
 ---
 
@@ -304,9 +275,7 @@ Descripción breve del proyecto.
 [Especificar licencia]
 ```
 
-**Tiempo Estimado:** 1 hora
-
-### 4.2 Documentar Estructura de Base de Datos
+## 4.2 Documentar Estructura de Base de Datos
 
 **Descripción del Problema:**
 - No hay documentación sobre la estructura de las tablas en Supabase
@@ -318,41 +287,4 @@ Descripción breve del proyecto.
 2. Documentar estructura de tablas, relaciones y campos
 3. Incluir diagrama si es posible
 
-**Tiempo Estimado:** 1-2 horas
-
 ---
-
-## Resumen de Acciones por Ejecutar
-
-### Fase 1 (INMEDIATA - Semana 1)
-- [ ] Rotar todas las credenciales (Supabase, SMTP)
-- [ ] Crear `.env.example` sin valores
-- [ ] Remover `assets/.env` del repositorio
-- [ ] Limpiar historial de git
-- [ ] Actualizar `.gitignore`
-
-### Fase 2 (URGENTE - Semana 1-2)
-- [ ] Remover carpetas `Preparativos Tania/` y `PreparativosJair/`
-- [ ] Remover carpeta `fluttelogin/`
-- [ ] Remover archivos de imagen y workspace
-- [ ] Limpiar archivos sueltos
-
-### Fase 3 (IMPORTANTE - Semana 2-3)
-- [ ] Renombrar archivos a snake_case
-- [ ] Reorganizar estructura de carpetas
-- [ ] Actualizar todas las importaciones
-- [ ] Verificar que la aplicación sigue funcionando
-
-### Fase 4 (MANTENIMIENTO - Semana 3-4)
-- [ ] Crear README.md completo
-- [ ] Documentar estructura de base de datos
-- [ ] Revisar y optimizar `.gitignore`
-
----
-
-## Notas Importantes
-
-1. **Seguridad**: Los cambios de Prioridad 1 son mandatorios antes de cualquier otra acción
-2. **Testing**: Después de cada fase, ejecutar `flutter pub get` y `flutter run` para verificar que todo funciona
-3. **Commits**: Mantener commits limpios y descriptivos durante todo el proceso
-4. **Backup**: Considerar hacer backup del repositorio antes de limpiar historial de git
