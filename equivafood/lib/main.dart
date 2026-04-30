@@ -51,19 +51,19 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // Si está logueado va directo a la Principal, si no, al Login
-      home: isLoggedIn ? const PantallaPrincipal() : const LoginScreen(),
+      home: isLoggedIn ? const PantallaPrincipal() : const Login(),
     );
   }
 }
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class Login extends StatefulWidget {
+  const Login({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<Login> createState() => _LoginState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginState extends State<Login> {
   final _correoController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -242,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const RegistroScreen()),
+                    MaterialPageRoute(builder: (_) => const Registro()),
                   ),
                   child: const Text(
                     '¿No tienes cuenta? Regístrate aquí',

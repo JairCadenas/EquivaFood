@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api_service.dart';
 
-class RegistroScreen extends StatefulWidget {
-  const RegistroScreen({super.key});
+class Registro extends StatefulWidget {
+  const Registro({super.key});
 
   @override
-  State<RegistroScreen> createState() => _RegistroScreenState();
+  State<Registro> createState() => _RegistroState();
 }
 
-class _RegistroScreenState extends State<RegistroScreen> {
+class _RegistroState extends State<Registro> {
   final _nombreController = TextEditingController();
   final _edadController = TextEditingController();
   final _pesoController = TextEditingController();
@@ -21,7 +21,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // Variables para la gestion de la imagen de perfil
+  // Variables para la gestión de la imagen de perfil
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
@@ -36,11 +36,11 @@ class _RegistroScreenState extends State<RegistroScreen> {
     super.dispose();
   }
 
-  // Permite al usuario seleccionar una imagen de la galeria
+  // Permite al usuario seleccionar una imagen de la galería
   Future<void> _seleccionarImagen() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 50, // Reduccion de calidad para optimizar el almacenamiento
+      imageQuality: 50,
     );
 
     if (pickedFile != null) {
@@ -58,7 +58,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     try {
       String? avatarUrl;
 
-      // Proceso de subida de imagen a Supabase Storage antes de crear el registro del usuario
+      // Subida de imagen a Supabase Storage antes de crear el registro del usuario
       if (_imageFile != null) {
         avatarUrl = await ApiService.subirImagen(
           _imageFile!,
@@ -66,7 +66,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         );
       }
 
-      // Creacion del registro en la base de datos incluyendo la URL del avatar
+      // Creación del registro en la base de datos incluyendo la URL del avatar
       final result = await ApiService.registro(
         nombre: _nombreController.text.trim(),
         edad: int.parse(_edadController.text.trim()),
@@ -76,7 +76,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ),
         correo: _correoController.text.trim().toLowerCase(),
         password: _passwordController.text.trim(),
-        avatarUrl: avatarUrl, // Se añade el parametro opcional de la URL
+        avatarUrl: avatarUrl,
       );
 
       if (!mounted) return;
@@ -102,7 +102,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
     }
   }
 
-  // Helper para campos de texto
   Widget _buildField({
     required TextEditingController controller,
     required String hint,
@@ -151,7 +150,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             key: _formKey,
             child: Column(
               children: [
-                // Cabecera interactiva para seleccion de imagen
+                // Avatar interactivo para seleccionar foto al registrarse
                 GestureDetector(
                   onTap: _seleccionarImagen,
                   child: CircleAvatar(
@@ -216,6 +215,15 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         controller: _edadController,
                         hint: 'Edad',
                         keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Requerido';
+                          final edad = int.tryParse(value);
+                          if (edad == null) return 'Número inválido';
+                          if (edad < 1) return 'Mín. 1 año';
+                          if (edad > 120) return 'Máx. 120 años';
+                          return null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -224,6 +232,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         controller: _pesoController,
                         hint: 'Peso (kg)',
                         keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Requerido';
+                          final peso = double.tryParse(
+                            value.replaceAll(',', '.'),
+                          );
+                          if (peso == null) return 'Número inválido';
+                          if (peso < 1) return 'Mín. 1 kg';
+                          if (peso > 635) return 'Máx. 635 kg';
+                          return null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -232,6 +251,19 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         controller: _estaturaController,
                         hint: 'Estatura (m)',
                         keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.isEmpty)
+                            return 'Requerido';
+                          final val = double.tryParse(
+                            value.replaceAll(',', '.'),
+                          );
+                          if (val == null) return 'Número inválido';
+                          if (val < 0.5 && val > 0) return 'Mín. 0.5 m';
+                          if (val > 2.72 && val <= 10) return 'Máx. 2.72 m';
+                          if (val > 10 && val < 50) return 'Usa m (ej: 1.70)';
+                          if (val > 272) return 'Máx. 272 cm';
+                          return null;
+                        },
                       ),
                     ),
                   ],

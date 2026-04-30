@@ -4,6 +4,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ApiService {
   // Cliente de Supabase para realizar peticiones a la base de datos y al storage
@@ -242,5 +243,149 @@ class ApiService {
     } catch (e) {
       throw Exception('Error al actualizar el perfil: $e');
     }
+  }
+
+  // ── GESTIÓN DE PDF DEL PLAN ALIMENTICIO ───────────────────────────────────
+  // Sube el PDF al bucket 'planes_alimenticios' y guarda la URL pública en la DB
+  static Future<String?> subirPlanPDF({
+    required String correo,
+    required PlatformFile file,
+  }) async {
+    try {
+      final fileName =
+          'plan_${correo}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      if (file.bytes != null) {
+        // Subida en Web (usando bytes)
+        await _supabase.storage
+            .from('planes_alimenticios')
+            .uploadBinary(
+              fileName,
+              file.bytes!,
+              fileOptions: const FileOptions(
+                contentType: 'application/pdf',
+                upsert: true,
+              ),
+            );
+      } else {
+        // Subida en móvil/desktop (usando path del archivo)
+        await _supabase.storage
+            .from('planes_alimenticios')
+            .upload(
+              fileName,
+              File(file.path!),
+              fileOptions: const FileOptions(
+                contentType: 'application/pdf',
+                upsert: true,
+              ),
+            );
+      }
+
+      final String publicUrl = _supabase.storage
+          .from('planes_alimenticios')
+          .getPublicUrl(fileName);
+
+      // Persistir la URL del PDF en la tabla del usuario
+      await _supabase
+          .from('usuario')
+          .update({'plan_pdf_url': publicUrl})
+          .eq('correo', correo);
+
+      return publicUrl;
+    } catch (e) {
+      throw Exception('Error al subir PDF: $e');
+    }
+  }
+
+  // ── LÓGICA DE EQUIVALENCIAS ALIMENTICIAS ──────────────────────────────────
+
+  // Retorna el alimento original asignado en el plan PDF para un tiempo de comida
+  static Map<String, String> obtenerPlanOriginal(
+    String tiempoComida,
+    String dia,
+  ) {
+    final original = {
+      "Desayuno": "Licuado de Proteína con Avena",
+      "Colación": "1 Manzana Mediana",
+      "Comida": "Pollo con Arroz y Verduras",
+      "Cena": "Ensalada de Atún",
+    };
+    return {
+      "nombre": original[tiempoComida] ?? "Alimento asignado en PDF",
+      "info": "Cantidades según tu documento",
+    };
+  }
+
+  // Retorna una lista de alternativas equivalentes para un tiempo de comida
+  static List<Map<String, String>> obtenerEquivalentes(
+    String tiempoComida,
+    String dia,
+  ) {
+    final mapa = {
+      "Desayuno": [
+        {
+          "nombre": "Omelette de 2 claras con champiñones",
+          "info": "Equivalente: 1 Proteína + 1 Verdura",
+        },
+        {
+          "nombre": "Yogurt Griego con 5 almendras",
+          "info": "Equivalente: 1 Proteína + 1 Grasa",
+        },
+        {
+          "nombre": "2 Huevos cocidos con espinacas",
+          "info": "Equivalente: 1 Proteína + 1 Verdura",
+        },
+        {
+          "nombre": "Queso Panela asado (60g) con nopal",
+          "info": "Equivalente: 1 Proteína + 1 Fibra",
+        },
+      ],
+      "Colación": [
+        {"nombre": "10 mitades de nuez", "info": "Equivalente: 1 Grasa"},
+        {"nombre": "1 Taza de Jícama con limón", "info": "Equivalente: Libre"},
+        {"nombre": "1 Pera pequeña", "info": "Equivalente: 1 Fruta"},
+        {"nombre": "1 Gelatina light", "info": "Equivalente: Libre"},
+      ],
+      "Comida": [
+        {
+          "nombre": "Filete de Pescado (120g) al vapor",
+          "info": "Equivalente: 1.5 Proteína",
+        },
+        {
+          "nombre": "Carne de res magra (100g) asada",
+          "info": "Equivalente: 1.5 Proteína",
+        },
+        {
+          "nombre": "Tacos de pechuga de pavo (3 pzas)",
+          "info": "Equivalente: 1.5 Proteína + Carbohidrato",
+        },
+        {
+          "nombre": "Salmón a la plancha con espárragos",
+          "info": "Equivalente: 2 Proteínas + Fibra",
+        },
+      ],
+      "Cena": [
+        {
+          "nombre": "Sándwich de pan integral con pavo",
+          "info": "Equivalente: 1 Carbohidrato + 1 Proteína",
+        },
+        {
+          "nombre": "Quesadilla con tortilla de maíz (1 pza)",
+          "info": "Equivalente: 1 Carbohidrato + 1 Proteína",
+        },
+        {
+          "nombre": "Taza de cereal de fibra con leche light",
+          "info": "Equivalente: 1 Carb + 0.5 Proteína",
+        },
+        {
+          "nombre": "Rollitos de jamón con queso cottage",
+          "info": "Equivalente: 1 Proteína + Lácteo",
+        },
+      ],
+    };
+    return mapa[tiempoComida] ??
+        [
+          {"nombre": "Opción Genérica", "info": "Equivalencia estándar"},
+        ];
   }
 }

@@ -92,6 +92,6 @@ ALTER TABLE RestriccionAlimenticia
     FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario);
 
 ALTER TABLE Usuario 
-ADD COLUMN avatar_url TEXT;
-ALTER TABLE Usuario 
+ADD COLUMN avatar_url VARCHAR(255);
+ALTER TABLE Usuario
 ALTER COLUMN planAlimentario DROP NOT NULL;

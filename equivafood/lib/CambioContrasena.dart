@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
 
-class CambioContrasenaScreen extends StatefulWidget {
+class CambioContrasena extends StatefulWidget {
   final String correo;
   final String codigo;
 
-  const CambioContrasenaScreen({
+  const CambioContrasena({
     super.key,
     required this.correo,
     required this.codigo,
   });
 
   @override
-  State<CambioContrasenaScreen> createState() => _CambioContrasenaScreenState();
+  State<CambioContrasena> createState() => _CambioContrasenaState();
 }
 
-class _CambioContrasenaScreenState extends State<CambioContrasenaScreen> {
+class _CambioContrasenaState extends State<CambioContrasena> {
   final _nuevaPasswordController = TextEditingController();
   final _confirmarPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();

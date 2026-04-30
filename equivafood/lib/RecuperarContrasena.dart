@@ -50,7 +50,7 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CodigoVerificacionScreen(
+          builder: (_) => CodigoVerificacion(
             correo: _correoController.text.trim().toLowerCase(),
           ),
         ),

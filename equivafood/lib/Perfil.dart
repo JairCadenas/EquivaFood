@@ -1,18 +1,18 @@
-import 'dart:io'; // 1. Añadido para manejar el archivo de imagen
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // 2. Añadido para elegir la foto
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_service.dart';
 
-class PerfilScreen extends StatefulWidget {
-  const PerfilScreen({super.key});
+class Perfil extends StatefulWidget {
+  const Perfil({super.key});
 
   @override
-  State<PerfilScreen> createState() => _PerfilScreenState();
+  State<Perfil> createState() => _PerfilState();
 }
 
-class _PerfilScreenState extends State<PerfilScreen> {
+class _PerfilState extends State<Perfil> {
   final _formKey = GlobalKey<FormState>();
 
   final _nombreController = TextEditingController();
@@ -21,8 +21,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   final _estaturaController = TextEditingController();
 
   String _correoUsuario = '';
-  String? _avatarUrl; // 3. Variable para la URL de Supabase
-  File? _imageFile; // 4. Variable para la foto nueva seleccionada
+  String? _avatarUrl; // URL de la imagen guardada en Supabase
+  File? _imageFile; // Imagen nueva seleccionada localmente
   bool _isLoading = false;
   bool _isLoadingData = true;
 
@@ -41,7 +41,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     super.dispose();
   }
 
-  // Cargar los datos actuales desde Supabase para mostrarlos en los campos
+  // Carga los datos actuales del usuario desde Supabase
   Future<void> _cargarDatosUsuario() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -60,8 +60,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         _edadController.text = data['edad']?.toString() ?? '';
         _pesoController.text = data['peso']?.toString() ?? '';
         _estaturaController.text = data['estatura']?.toString() ?? '';
-        _avatarUrl =
-            data['avatar_url']; // 5. Cargamos la URL de la imagen si existe
+        _avatarUrl = data['avatar_url'];
         _isLoadingData = false;
       });
     } catch (e) {
@@ -76,7 +75,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  // 6. Nuevo método para seleccionar la imagen de la galería
+  // Permite seleccionar una nueva imagen desde la galería
   Future<void> _seleccionarImagen() async {
     final picker = ImagePicker();
     final XFile? pickedFile = await picker.pickImage(
@@ -91,14 +90,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  // Guardar los cambios realizados
+  // Guarda los cambios del perfil, subiendo la imagen si fue modificada
   Future<void> _guardarCambios() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // 7. Lógica de subida de imagen
+      // Si se eligió una nueva imagen, subirla primero a Supabase Storage
       String? nuevaUrl = _avatarUrl;
       if (_imageFile != null) {
         nuevaUrl = await ApiService.subirImagen(_imageFile!, _correoUsuario);
@@ -112,7 +111,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         estatura: double.parse(
           _estaturaController.text.trim().replaceAll(',', '.'),
         ),
-        avatarUrl: nuevaUrl, // 8. Pasamos la URL al ApiService
+        avatarUrl: nuevaUrl,
       );
 
       if (!mounted) return;
@@ -124,6 +123,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         ),
       );
 
+      // Devuelve true para que PantallaPrincipal refresque los datos
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -143,6 +143,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     required String label,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -158,8 +159,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
             borderSide: const BorderSide(color: Color(0xFF33D1C1), width: 2),
           ),
         ),
-        validator: (value) =>
-            (value == null || value.isEmpty) ? 'Requerido' : null,
+        validator:
+            validator ??
+            (value) => (value == null || value.isEmpty) ? 'Requerido' : null,
       ),
     );
   }
@@ -187,7 +189,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // 9. Modificamos el CircleAvatar para que sea interactivo
+                    // Avatar interactivo para cambiar la foto de perfil
                     GestureDetector(
                       onTap: _seleccionarImagen,
                       child: Stack(
@@ -196,12 +198,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                             radius: 55,
                             backgroundColor: const Color(0xFFF5F5F5),
                             backgroundImage: _imageFile != null
-                                ? FileImage(_imageFile!) // Si eligió una nueva
+                                ? FileImage(_imageFile!)
                                 : (_avatarUrl != null
-                                      ? NetworkImage(
-                                          _avatarUrl!,
-                                        ) // Si ya tenía una en Supabase
-                                      : null),
+                                          ? NetworkImage(_avatarUrl!)
+                                          : null)
+                                      as ImageProvider?,
                             child: (_imageFile == null && _avatarUrl == null)
                                 ? const Icon(
                                     Icons.person,
@@ -236,7 +237,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ),
                     const SizedBox(height: 30),
 
-                    // Campos de texto
                     _buildField(
                       controller: _nombreController,
                       label: 'Nombre completo',
@@ -247,6 +247,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       label: 'Edad',
                       icon: Icons.cake_outlined,
                       keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Requerido';
+                        final edad = int.tryParse(value);
+                        if (edad == null) return 'Ingresa un número válido';
+                        if (edad < 1) return 'La edad mínima es 1 año';
+                        if (edad > 120) return 'La edad máxima es 120 años';
+                        return null;
+                      },
                     ),
                     _buildField(
                       controller: _pesoController,
@@ -255,6 +263,16 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Requerido';
+                        final peso = double.tryParse(
+                          value.replaceAll(',', '.'),
+                        );
+                        if (peso == null) return 'Ingresa un número válido';
+                        if (peso < 1) return 'El peso mínimo es 1 kg';
+                        if (peso > 635) return 'El peso máximo es 635 kg';
+                        return null;
+                      },
                     ),
                     _buildField(
                       controller: _estaturaController,
@@ -263,11 +281,24 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Requerido';
+                        final val = double.tryParse(value.replaceAll(',', '.'));
+                        if (val == null) return 'Ingresa un número válido';
+                        // Acepta tanto cm (ej: 170) como metros (ej: 1.70)
+                        if (val < 0.5 && val > 0)
+                          return 'Estatura mínima: 0.5 m o 50 cm';
+                        if (val > 2.72 && val <= 10)
+                          return 'Estatura máxima: 2.72 m';
+                        if (val > 10 && val < 50)
+                          return 'Ingresa en cm (ej: 170) o m (ej: 1.70)';
+                        if (val > 272) return 'Estatura máxima: 272 cm';
+                        return null;
+                      },
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Botón de guardar
                     SizedBox(
                       width: double.infinity,
                       height: 55,

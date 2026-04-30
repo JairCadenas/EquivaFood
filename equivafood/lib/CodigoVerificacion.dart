@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'CambioContrasena.dart';
 import 'api_service.dart';
 
-class CodigoVerificacionScreen extends StatefulWidget {
+class CodigoVerificacion extends StatefulWidget {
   final String correo;
 
-  const CodigoVerificacionScreen({super.key, required this.correo});
+  const CodigoVerificacion({super.key, required this.correo});
 
   @override
-  State<CodigoVerificacionScreen> createState() =>
-      _CodigoVerificacionScreenState();
+  State<CodigoVerificacion> createState() => _CodigoVerificacionState();
 }
 
-class _CodigoVerificacionScreenState extends State<CodigoVerificacionScreen> {
+class _CodigoVerificacionState extends State<CodigoVerificacion> {
   final _codigoController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
@@ -39,7 +38,7 @@ class _CodigoVerificacionScreenState extends State<CodigoVerificacionScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CambioContrasenaScreen(
+          builder: (_) => CambioContrasena(
             correo: widget.correo,
             codigo: _codigoController.text.trim(),
           ),
@@ -125,8 +124,9 @@ class _CodigoVerificacionScreenState extends State<CodigoVerificacionScreen> {
                       width: 140,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed:
-                            _isLoading ? null : () => Navigator.pop(context),
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           shape: RoundedRectangleBorder(
