@@ -21,7 +21,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final List<String> _dias = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
 
   List<String> _restricciones = [];
-  bool _preferencia = true; 
+  bool _preferencia = true;
 
   @override
   void initState() {
@@ -33,7 +33,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _restricciones = prefs.getStringList('restricciones') ?? [];
-      _preferencia = prefs.getBool('preferencia') ?? true; 
+      _preferencia = prefs.getBool('preferencia') ?? true;
     });
   }
 
@@ -78,7 +78,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         future: _getDatosUsuario(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: primaryColor));
+            return const Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
           }
 
           if (snapshot.hasError) {
@@ -87,7 +89,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
           final user = snapshot.data!;
           final String? avatarUrl = user['avatar_url'];
-          final bool tienePlan = user['plan_pdf_url'] != null && user['plan_pdf_url'].toString().isNotEmpty;
+          final bool tienePlan =
+              user['plan_pdf_url'] != null &&
+              user['plan_pdf_url'].toString().isNotEmpty;
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -103,10 +107,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         Image.asset(
                           'assets/Logo.png',
                           height: 45,
-                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.fastfood, color: primaryColor),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.fastfood, color: primaryColor),
                         ),
                         const SizedBox(width: 10),
-                        const Text('EquivaFood', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+                        const Text(
+                          'EquivaFood',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 25),
@@ -124,8 +136,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                           child: CircleAvatar(
                             radius: 24,
                             backgroundColor: const Color(0xFFF5F5F5),
-                            backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty) ? NetworkImage(avatarUrl) : null,
-                            child: (avatarUrl == null || avatarUrl.isEmpty) ? const Icon(Icons.person, color: Colors.grey, size: 28) : null,
+                            backgroundImage:
+                                (avatarUrl != null && avatarUrl.isNotEmpty)
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                            child: (avatarUrl == null || avatarUrl.isEmpty)
+                                ? const Icon(
+                                    Icons.person,
+                                    color: Colors.grey,
+                                    size: 28,
+                                  )
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -137,22 +158,51 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                             children: [
                               Text(
                                 user['nombre'] ?? 'Usuario',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 2),
-                              Text('${user['peso']} kg  ·  ${user['estatura']} cm', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                              Text(
+                                '${user['peso']} kg  ·  ${user['estatura']} cm',
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 4),
 
-                        _buildCompactIconBtn(context, Icons.menu_book, primaryColor, const Planalimenticio()),
-                        _buildCompactIconBtn(context, Icons.person_outline, primaryColor, const Perfil()),
-                        _buildCompactIconBtn(context, Icons.help_outline, primaryColor, const Ayuda()),
+                        _buildCompactIconBtn(
+                          context,
+                          Icons.menu_book,
+                          primaryColor,
+                          const Planalimenticio(),
+                        ),
+                        _buildCompactIconBtn(
+                          context,
+                          Icons.person_outline,
+                          primaryColor,
+                          const Perfil(),
+                        ),
+                        _buildCompactIconBtn(
+                          context,
+                          Icons.help_outline,
+                          primaryColor,
+                          const Ayuda(),
+                        ),
                         IconButton(
-                          icon: const Icon(Icons.power_settings_new, color: Colors.redAccent, size: 20),
+                          icon: const Icon(
+                            Icons.power_settings_new,
+                            color: Colors.redAccent,
+                            size: 20,
+                          ),
                           constraints: const BoxConstraints(),
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           onPressed: () => _cerrarSesion(context),
@@ -161,11 +211,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     ),
                     const SizedBox(height: 25),
 
-                    const Text('Día de la semana:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    const Text(
+                      'Día de la semana:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     _buildSelectorDias(primaryColor),
                     const SizedBox(height: 15),
 
-                    const Text('Comidas del Día:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    const Text(
+                      'Comidas del Día:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: 15),
 
                     _mealCard("Desayuno", tienePlan),
@@ -184,12 +246,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
-                            const Icon(Icons.tune, size: 14, color: Colors.orange),
+                            const Icon(
+                              Icons.tune,
+                              size: 14,
+                              color: Colors.orange,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Filtro activo: ${!_preferencia ? "Dieta vegetal" : ""}'
                               '${_restricciones.isNotEmpty ? " · ${_restricciones.length} restricción(es)" : ""}',
-                              style: const TextStyle(fontSize: 11, color: Colors.orange),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange,
+                              ),
                             ),
                           ],
                         ),
@@ -205,10 +274,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
-  Widget _buildCompactIconBtn(BuildContext context, IconData icon, Color color, Widget screen) {
+  Widget _buildCompactIconBtn(
+    BuildContext context,
+    IconData icon,
+    Color color,
+    Widget screen,
+  ) {
     return IconButton(
       onPressed: () async {
-        await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => screen),
+        );
         _refrescarDatos();
       },
       icon: Icon(icon, color: color, size: 20),
@@ -239,9 +316,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_dias[index], style: TextStyle(color: esHoy ? Colors.white : Colors.black87, fontWeight: esHoy ? FontWeight.bold : FontWeight.normal)),
+                  Text(
+                    _dias[index],
+                    style: TextStyle(
+                      color: esHoy ? Colors.white : Colors.black87,
+                      fontWeight: esHoy ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  if (esHoy) Container(height: 5, width: 5, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                  if (esHoy)
+                    Container(
+                      height: 5,
+                      width: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -252,7 +343,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   Widget _mealCard(String title, bool tienePlan) {
-    final original = ApiService.obtenerPlanOriginal(title, _dias[_diaSeleccionado]);
+    final original = ApiService.obtenerPlanOriginal(
+      title,
+      _dias[_diaSeleccionado],
+    );
     final alternativas = ApiService.obtenerEquivalentes(
       title,
       _dias[_diaSeleccionado],
@@ -272,10 +366,21 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         child: ExpansionTile(
           iconColor: const Color(0xFF33D1C1),
           leading: const Icon(Icons.restaurant_menu, color: Colors.black26),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           subtitle: Text(
-            tienePlan ? "Original: ${original['nombre']}" : "Sube tu PDF para ver tu dieta",
-            style: TextStyle(fontSize: 12, color: tienePlan ? Colors.black54 : Colors.redAccent),
+            tienePlan
+                ? "Original: ${original['nombre']}"
+                : "Sube tu PDF para ver tu dieta",
+            style: TextStyle(
+              fontSize: 12,
+              color: tienePlan ? Colors.black54 : Colors.redAccent,
+            ),
           ),
           children: tienePlan
               ? [
@@ -284,16 +389,42 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text("Alternativas Sugeridas:", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF33D1C1), fontSize: 13)),
+                      child: Text(
+                        "Alternativas Sugeridas:",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF33D1C1),
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
-                  ...alternativas.map((eq) => ListTile(
+                  ...alternativas
+                      .map(
+                        (eq) => ListTile(
                           dense: true,
-                          leading: const Icon(Icons.swap_horiz, color: Color(0xFF33D1C1), size: 18),
-                          title: Text(eq['nombre']!, style: const TextStyle(fontSize: 14)),
-                          subtitle: Text(eq['info']!, style: const TextStyle(color: Colors.green, fontSize: 11)),
+                          leading: const Icon(
+                            Icons.swap_horiz,
+                            color: Color(0xFF33D1C1),
+                            size: 18,
+                          ),
+                          title: Text(
+                            eq['nombre']!,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            eq['info']!,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontSize: 11,
+                            ),
+                          ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.menu_book_outlined, color: Color(0xFF33D1C1), size: 18),
+                            icon: const Icon(
+                              Icons.menu_book_outlined,
+                              color: Color(0xFF33D1C1),
+                              size: 18,
+                            ),
                             tooltip: 'Ver receta',
                             onPressed: () => Navigator.push(
                               context,
@@ -306,12 +437,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               ),
                             ),
                           ),
-                        )).toList(),
+                        ),
+                      )
+                      .toList(),
                   const SizedBox(height: 8),
                 ]
               : [
                   const ListTile(
-                    title: Text("Ve a 'Mi Plan Alimenticio' para subir tu dieta.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    title: Text(
+                      "Ve a 'Mi Plan Alimenticio' para subir tu dieta.",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ),
                 ],
         ),

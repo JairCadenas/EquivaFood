@@ -4,36 +4,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
 
 ---
 
-## Prioridad 1: Crítica (Seguridad)
-
-### 1.1 Credenciales Expuestas en el Repositorio
-
-**Descripción del Problema:**
-- El archivo `equivafood/assets/.env` contiene credenciales sensibles (claves de Supabase y contraseñas SMTP)
-- Este archivo está bajo control de versión de Git
-- No está excluido en el archivo `.gitignore`
-- Las credenciales existen en el historial de commits (commit 8cc6b73)
-
-**Riesgos Asociados:**
-- Acceso no autorizado a la base de datos Supabase
-- Posibilidad de envío de correos fraudulentos desde la cuenta SMTP
-- Compromiso de datos de usuarios de la aplicación
-- Violación de estándares de seguridad
-
-**Acciones Requeridas:**
-
-1. Rotar inmediatamente todas las credenciales comprometidas en Supabase y el servicio de correo
-2. ✓ Crear un archivo `.env.example` con nombres de variables sin valores
-3. ✓ Añadir exclusiones al archivo `equivafood/.gitignore`
-4. ✓ Eliminar el archivo `equivafood/assets/.env` del repositorio
-5. Limpiar el historial de git para eliminar referencias al archivo
-6. Documentar en el README.md las instrucciones para configurar variables de entorno localmente
-7. Implementar validación en `main.dart` para verificar que las variables de entorno existen antes de iniciar la aplicación
-
-**Tiempo Estimado:** 1-2 horas (incluyendo rotación de credenciales)
-
----
-
 ## Prioridad 2: Alta (Organización y Limpieza)
 
 ### 2.1 Eliminar Carpetas de Práctica y Preparativos
