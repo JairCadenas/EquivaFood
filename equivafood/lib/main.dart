@@ -15,10 +15,10 @@ void main() async {
 
   // 2. Cargamos variables desde assets/.env
   try {
-    await dotenv.load(fileName: "assets/.env");
+    await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint(
-      "Error crítico: No se encontró assets/.env. Revisa pubspec.yaml",
+      "Error crítico: No se encontró el archivo .env en la raíz. Revisa pubspec.yaml",
     );
   }
 
@@ -242,7 +242,7 @@ class _LoginState extends State<Login> {
                 TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const Registro()),
+                    MaterialPageRoute(builder: (_) => Registro()),
                   ),
                   child: const Text(
                     '¿No tienes cuenta? Regístrate aquí',

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
@@ -14,27 +15,20 @@ class ApiService {
   static String get _usuarioCorreo => dotenv.get('SMTP_EMAIL', fallback: '');
   static String get _passwordApp => dotenv.get('SMTP_PASSWORD', fallback: '');
 
-  // ── SUBIR IMAGEN A STORAGE ────────────────────────────────────────────────
-  // Sube un archivo fisico al bucket 'avatars' y retorna la URL publica
+  // ── SUBIR IMAGEN DE PERFIL A STORAGE ─────────────────────────────────────
   static Future<String?> subirImagen(File imageFile, String email) async {
     try {
-      // Generacion de un nombre unico para el archivo usando el correo y un timestamp
       final String fileName =
           'avatar_${email}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Peticion de subida al bucket 'avatars'
-      await _supabase.storage
-          .from('avatars')
-          .upload(
+      await _supabase.storage.from('avatars').upload(
             fileName,
             imageFile,
             fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
           );
 
-      // Obtencion de la URL publica necesaria para mostrar la imagen en la app
-      final String publicUrl = _supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
+      final String publicUrl =
+          _supabase.storage.from('avatars').getPublicUrl(fileName);
       return publicUrl;
     } catch (e) {
       print('Error en ApiService.subirImagen: $e');
@@ -42,14 +36,12 @@ class ApiService {
     }
   }
 
-  // ── INICIO DE SESIÓN ──────────────────────────────────────────────────────
-  // Valida credenciales y guarda la sesion localmente mediante SharedPreferences
+  // ── INICIO DE SESIÓN (ACTUALIZADO: Recupera y reconstruye las restricciones de la DB) ──
   static Future<Map<String, dynamic>> login({
     required String correo,
     required String password,
   }) async {
     try {
-      // Consulta a la tabla 'usuario' buscando coincidencia de correo y password
       final data = await _supabase
           .from('usuario')
           .select()
@@ -61,21 +53,36 @@ class ApiService {
         throw Exception('Correo o contraseña incorrectos');
       }
 
-      // Persistencia local de los datos del usuario para evitar re-logueos innecesarios
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userName', data['nombre'] ?? 'Usuario');
       await prefs.setString('userEmail', data['correo'] ?? '');
       await prefs.setString('userPeso', data['peso']?.toString() ?? '0');
-      await prefs.setString(
-        'userEstatura',
-        data['estatura']?.toString() ?? '0',
-      );
+      await prefs.setString('userEstatura', data['estatura']?.toString() ?? '0');
 
-      // Guardado de la URL del avatar en preferencias locales si el usuario tiene una
       if (data['avatar_url'] != null) {
         await prefs.setString('userAvatar', data['avatar_url']);
       }
+
+      // ── RECONSTRUCCIÓN SEGURA DE RESTRICCIONES AL INICIAR SESIÓN ──
+      List<String> restricciones = [];
+      final rawRestricciones = data['restricciones'];
+
+      if (rawRestricciones != null) {
+        if (rawRestricciones is List) {
+          restricciones = rawRestricciones.map((e) => e.toString()).toList();
+        } else if (rawRestricciones is String) {
+          // Limpia los corchetes si se guardó como string plano "[nuez, gluten]"
+          final cleanStr = rawRestricciones.replaceAll('[', '').replaceAll(']', '').trim();
+          if (cleanStr.isNotEmpty) {
+            restricciones = cleanStr.split(',').map((e) => e.trim()).toList();
+          }
+        }
+      }
+
+      // Guardamos en SharedPreferences para que persistan localmente en esta nueva sesión
+      await prefs.setStringList('restricciones', restricciones);
+      await prefs.setBool('preferencia', data['preferencia'] ?? true);
 
       return data;
     } catch (e) {
@@ -84,7 +91,6 @@ class ApiService {
   }
 
   // ── REGISTRO DE USUARIO ───────────────────────────────────────────────────
-  // Crea un nuevo registro en la base de datos con toda la informacion del perfil
   static Future<Map<String, dynamic>> registro({
     required String nombre,
     required int edad,
@@ -93,11 +99,11 @@ class ApiService {
     required String correo,
     required String password,
     String? planAlimentario,
-    String?
-    avatarUrl, // Parametro opcional que recibe la URL generada en Storage
+    String? avatarUrl,
+    List<String> restricciones = const [],   
+    bool preferencia = true,                 
   }) async {
     try {
-      // Insercion de datos en la tabla 'usuario'. Se incluye la URL del avatar
       final response = await _supabase.from('usuario').insert({
         'nombre': nombre,
         'edad': edad,
@@ -106,9 +112,14 @@ class ApiService {
         'correo': correo,
         'password': password,
         'planalimentario': planAlimentario,
-        'avatar_url':
-            avatarUrl, // Persistencia de la URL en la columna de la DB
+        'avatar_url': avatarUrl,
+        'restricciones': restricciones.toString(), 
+        'preferencia': preferencia,           
       }).select();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('restricciones', restricciones);
+      await prefs.setBool('preferencia', preferencia);
 
       return response.first;
     } catch (e) {
@@ -117,14 +128,11 @@ class ApiService {
   }
 
   // ── RECUPERACIÓN DE CONTRASEÑA ─────────────────────────────────────────────
-  // Genera un codigo aleatorio, lo guarda en la DB y lo envia por correo via SMTP
   static Future<void> enviarCodigoRecuperacion({required String correo}) async {
     try {
-      // Generacion de codigo de 6 digitos
-      final String codigo = (100000 + (DateTime.now().microsecond % 900000))
-          .toString();
+      final String codigo =
+          (100000 + (DateTime.now().microsecond % 900000)).toString();
 
-      // Registro del codigo con tiempo de expiracion de 15 minutos
       await _supabase.from('codigorecuperacion').upsert({
         'correo': correo,
         'codigo': codigo,
@@ -137,14 +145,12 @@ class ApiService {
         throw Exception('Credenciales SMTP no configuradas en el .env');
       }
 
-      // Configuracion del servidor de correo y envio del mensaje HTML
       final smtpServer = gmail(_usuarioCorreo, _passwordApp);
       final message = Message()
         ..from = Address(_usuarioCorreo, 'EquivaFood Soporte')
         ..recipients.add(correo)
         ..subject = 'Código de Recuperación - EquivaFood'
-        ..html =
-            """
+        ..html = """
           <div style="font-family: sans-serif; border: 1px solid #33D1C1; padding: 20px; border-radius: 10px;">
             <h2 style="color: #33D1C1;">Restablecer Contraseña</h2>
             <p>Has solicitado un código para cambiar tu contraseña en <b>EquivaFood</b>.</p>
@@ -160,7 +166,6 @@ class ApiService {
   }
 
   // ── VERIFICAR CÓDIGO ──────────────────────────────────────────────────────
-  // Valida que el codigo ingresado sea correcto y que no haya expirado
   static Future<void> verificarCodigo({
     required String correo,
     required String codigo,
@@ -176,15 +181,15 @@ class ApiService {
       if (res == null) throw Exception('Código incorrecto');
 
       final expiraEn = DateTime.parse(res['expira_en']);
-      if (DateTime.now().isAfter(expiraEn))
+      if (DateTime.now().isAfter(expiraEn)) {
         throw Exception('El código ha expirado');
+      }
     } catch (e) {
       throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   // ── CAMBIAR CONTRASEÑA FINAL ──────────────────────────────────────────────
-  // Actualiza la contraseña en la tabla de usuarios y limpia el codigo usado
   static Future<void> cambiarContrasena({
     required String correo,
     required String codigo,
@@ -194,10 +199,8 @@ class ApiService {
       await verificarCodigo(correo: correo, codigo: codigo);
       await _supabase
           .from('usuario')
-          .update({'password': nuevaPassword})
-          .eq('correo', correo);
+          .update({'password': nuevaPassword}).eq('correo', correo);
 
-      // Se elimina el codigo de recuperacion para que no sea reutilizable
       await _supabase.from('codigorecuperacion').delete().eq('correo', correo);
     } catch (e) {
       throw Exception('No se pudo cambiar la contraseña: $e');
@@ -205,7 +208,6 @@ class ApiService {
   }
 
   // ── ACTUALIZAR PERFIL ──────────────────────────────────────────────────────
-  // Modifica los datos del usuario existente y actualiza la sesion local
   static Future<void> actualizarPerfil({
     required String correo,
     required String nombre,
@@ -213,40 +215,36 @@ class ApiService {
     required double peso,
     required double estatura,
     String? avatarUrl,
+    List<String>? restricciones,   
+    bool? preferencia,             
   }) async {
     try {
-      // Creacion de un mapa dinamico para enviar solo los campos necesarios a la DB
       final Map<String, dynamic> updates = {
         'nombre': nombre,
         'edad': edad,
-        'weight': peso, // Nota: Asegurate de que el nombre sea 'peso' en tu DB
-        'height':
-            estatura, // Nota: Asegurate de que el nombre sea 'estatura' en tu DB
+        'peso': peso,
+        'estatura': estatura,
       };
 
-      // Si se subio una nueva imagen, se añade la URL al mapa de actualizacion
-      if (avatarUrl != null) {
-        updates['avatar_url'] = avatarUrl;
-      }
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+      if (restricciones != null) updates['restricciones'] = restricciones.toString(); 
+      if (preferencia != null) updates['preferencia'] = preferencia; 
 
       await _supabase.from('usuario').update(updates).eq('correo', correo);
 
-      // Sincronizacion de SharedPreferences con los nuevos valores de perfil
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userName', nombre);
       await prefs.setString('userPeso', peso.toString());
       await prefs.setString('userEstatura', estatura.toString());
-
-      if (avatarUrl != null) {
-        await prefs.setString('userAvatar', avatarUrl);
-      }
+      if (avatarUrl != null) await prefs.setString('userAvatar', avatarUrl);
+      if (restricciones != null) await prefs.setStringList('restricciones', restricciones);
+      if (preferencia != null) await prefs.setBool('preferencia', preferencia);
     } catch (e) {
       throw Exception('Error al actualizar el perfil: $e');
     }
   }
 
   // ── GESTIÓN DE PDF DEL PLAN ALIMENTICIO ───────────────────────────────────
-  // Sube el PDF al bucket 'planes_alimenticios' y guarda la URL pública en la DB
   static Future<String?> subirPlanPDF({
     required String correo,
     required PlatformFile file,
@@ -256,40 +254,27 @@ class ApiService {
           'plan_${correo}_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
       if (file.bytes != null) {
-        // Subida en Web (usando bytes)
-        await _supabase.storage
-            .from('planes_alimenticios')
-            .uploadBinary(
+        await _supabase.storage.from('planes_alimenticios').uploadBinary(
               fileName,
               file.bytes!,
               fileOptions: const FileOptions(
-                contentType: 'application/pdf',
-                upsert: true,
-              ),
+                  contentType: 'application/pdf', upsert: true),
             );
       } else {
-        // Subida en móvil/desktop (usando path del archivo)
-        await _supabase.storage
-            .from('planes_alimenticios')
-            .upload(
+        await _supabase.storage.from('planes_alimenticios').upload(
               fileName,
               File(file.path!),
               fileOptions: const FileOptions(
-                contentType: 'application/pdf',
-                upsert: true,
-              ),
+                  contentType: 'application/pdf', upsert: true),
             );
       }
 
-      final String publicUrl = _supabase.storage
-          .from('planes_alimenticios')
-          .getPublicUrl(fileName);
+      final String publicUrl =
+          _supabase.storage.from('planes_alimenticios').getPublicUrl(fileName);
 
-      // Persistir la URL del PDF en la tabla del usuario
       await _supabase
           .from('usuario')
-          .update({'plan_pdf_url': publicUrl})
-          .eq('correo', correo);
+          .update({'plan_pdf_url': publicUrl}).eq('correo', correo);
 
       return publicUrl;
     } catch (e) {
@@ -298,94 +283,136 @@ class ApiService {
   }
 
   // ── LÓGICA DE EQUIVALENCIAS ALIMENTICIAS ──────────────────────────────────
-
-  // Retorna el alimento original asignado en el plan PDF para un tiempo de comida
-  static Map<String, String> obtenerPlanOriginal(
-    String tiempoComida,
-    String dia,
-  ) {
-    final original = {
-      "Desayuno": "Licuado de Proteína con Avena",
-      "Colación": "1 Manzana Mediana",
-      "Comida": "Pollo con Arroz y Verduras",
-      "Cena": "Ensalada de Atún",
+  static Map<String, String> obtenerPlanOriginal(String tiempoComida, String dia) {
+    final Map<String, Map<String, String>> planPDFActual = {
+      "Lun": {
+        "Desayuno": "Huevo revuelto con espinacas (0.120 kg + 0.050 kg)",
+        "Colación": "Manzana verde (0.150 kg)",
+        "Comida": "Pechuga de pollo a la plancha con quinoa (0.150 kg + 0.100 kg)",
+        "Cena": "Atún en agua con ensalada verde (0.100 kg + 0.150 kg)"
+      },
+      "Mar": {
+        "Desayuno": "Avena con leche de almendras y fresas (0.040 kg + 0.250 l + 0.080 kg)",
+        "Colación": "Nueces de la india (0.025 kg)",
+        "Comida": "Filete de pescado blanco con brócoli al vapor (0.180 kg + 0.150 kg)",
+        "Cena": "Tacos de lechuga con pavo molido (0.120 kg + 0.080 kg)"
+      },
+      "Mie": {
+        "Desayuno": "Omelette de claras con champiñones (0.150 l + 0.060 kg)",
+        "Colación": "Pera madura (0.160 kg)",
+        "Comida": "Carne de res magra con arroz integral (0.140 kg + 0.080 kg)",
+        "Cena": "Sopa de verduras clara (0.350 l)"
+      },
+      "Jue": {
+        "Desayuno": "Batido de proteína con plátano (0.300 l + 0.030 kg + 0.080 kg)",
+        "Colación": "Zanahorias baby (0.100 kg)",
+        "Comida": "Salmón al horno con espárragos (0.150 kg + 0.120 kg)",
+        "Cena": "Pechuga de pavo con aguacate (0.100 kg + 0.050 kg)"
+      },
+      "Vie": {
+        "Desayuno": "Pan integral tostado con requesón (0.060 kg + 0.050 kg)",
+        "Colación": "Papaya picada (0.180 kg)",
+        "Comida": "Tostadas de pollo (0.130 kg + 2 pzas tostadas)",
+        "Cena": "Ensalada de garbanzos y pepino (0.080 kg + 0.120 kg)"
+      },
+      "Sab": {
+        "Desayuno": "Hot cakes de avena y clara de huevo (0.050 kg + 0.100 l)",
+        "Colación": "Melón chino (0.200 kg)",
+        "Comida": "Bistec de res con nopales asados (0.150 kg + 0.150 kg)",
+        "Cena": "Quesadilla de tortilla de maíz y queso panela (1 pza + 0.040 kg)"
+      },
+      "Dom": {
+        "Desayuno": "Chilaquiles verdes ligeros (0.040 kg totopo + 0.080 kg pollo)",
+        "Colación": "Toronja en gajos (0.180 kg)",
+        "Comida": "Pechuga de pollo rellena de calabacita (0.160 kg + 0.070 kg)",
+        "Cena": "Sándwich de pan integral y jamón de pavo (2 reb pan + 0.060 kg)"
+      }
     };
+
+    final String claveDia = planPDFActual.containsKey(dia) ? dia : "Lun";
+    final Map<String, String> comidasDeHoy = planPDFActual[claveDia]!;
+
     return {
-      "nombre": original[tiempoComida] ?? "Alimento asignado en PDF",
-      "info": "Cantidades según tu documento",
+      "nombre": comidasDeHoy[tiempoComida] ?? "Alimento asignado en PDF",
+      "info": "Cantidades y gramos de tu documento oficial",
     };
   }
 
-  // Retorna una lista de alternativas equivalentes para un tiempo de comida
+  static final Map<String, List<Map<String, dynamic>>> _banco = {
+    "Desayuno": [
+      {"nombre": "Omelette de 2 claras con champiñones",     "info": "Equivalente: 1 Proteína + 1 Verdura",      "tags": ["huevo"]},
+      {"nombre": "Yogurt Griego con 5 almendras",            "info": "Equivalente: 1 Proteína + 1 Grasa",        "tags": ["lacteo", "nuez"]},
+      {"nombre": "2 Huevos cocidos con espinacas",           "info": "Equivalente: 1 Proteína + 1 Verdura",      "tags": ["huevo"]},
+      {"nombre": "Queso Panela asado (60g) con nopal",       "info": "Equivalente: 1 Proteína + 1 Fibra",        "tags": ["lacteo"]},
+      {"nombre": "Avena con leche de almendra y fruta",      "info": "Equivalente: 1 Carb + 1 Grasa",            "tags": ["gluten", "nuez"]},
+      {"nombre": "Tostadas de arroz con aguacate",           "info": "Equivalente: 1 Carb + 1 Grasa",            "tags": []},
+      {"nombre": "Tofu revuelto con espinacas",              "info": "Equivalente: 1 Proteína + 1 Verdura",      "tags": ["soya"]},
+      {"nombre": "Licuado de proteína vegetal con plátano",  "info": "Equivalente: 1 Proteína + 1 Fruta",        "tags": ["soya"]},
+      {"nombre": "Chilaquiles con salsa verde (sin queso)",  "info": "Equivalente: 1 Carb + 1 Verdura",          "tags": ["gluten"]},
+      {"nombre": "Hotcakes de avena con miel",               "info": "Equivalente: 1.5 Carb",                    "tags": ["gluten", "huevo", "lacteo"]},
+    ],
+    "Colación": [
+      {"nombre": "10 mitades de nuez",                       "info": "Equivalente: 1 Grasa",                    "tags": ["nuez"]},
+      {"nombre": "1 Taza de Jícama con limón",               "info": "Equivalente: Libre",                      "tags": []},
+      {"nombre": "1 Pera pequeña",                           "info": "Equivalente: 1 Fruta",                    "tags": []},
+      {"nombre": "1 Gelatina light",                         "info": "Equivalente: Libre",                      "tags": []},
+      {"nombre": "Pepino con chile y limón",                 "info": "Equivalente: Libre",                      "tags": []},
+      {"nombre": "Edamame (1/2 taza)",                       "info": "Equivalente: 1 Proteína",                 "tags": ["soya"]},
+      {"nombre": "Zanahoria con hummus",                     "info": "Equivalente: 1 Verdura + 1 Grasa",        "tags": []},
+      {"nombre": "1 Manzana con mantequilla de maní",        "info": "Equivalente: 1 Fruta + 1 Grasa",          "tags": ["nuez"]},
+      {"nombre": "Galletas de arroz con aguacate",           "info": "Equivalente: 1 Carb + 1 Grasa",           "tags": []},
+      {"nombre": "Mix de semillas (girasol, chía)",          "info": "Equivalente: 1 Grasa",                    "tags": []},
+    ],
+    "Comida": [
+      {"nombre": "Filete de Pescado (120g) al vapor",        "info": "Equivalente: 1.5 Proteína",               "tags": ["pescado"]},
+      {"nombre": "Carne de res magra (100g) asada",          "info": "Equivalente: 1.5 Proteína",               "tags": ["carne"]},
+      {"nombre": "Tacos de pechuga de pavo (3 pzas)",        "info": "Equivalente: 1.5 Proteína + Carbohidrato","tags": ["carne", "gluten"]},
+      {"nombre": "Salmón a la plancha con espárragos",       "info": "Equivalente: 2 Proteínas + Fibra",        "tags": ["pescado"]},
+      {"nombre": "Lentejas guisadas con verduras",           "info": "Equivalente: 1.5 Proteína + 1 Carb",      "tags": []},
+      {"nombre": "Fajitas de tofu con pimientos",            "info": "Equivalente: 1.5 Proteína + 1 Verdura",   "tags": ["soya"]},
+      {"nombre": "Sopa de garbanzo con espinacas",           "info": "Equivalente: 1 Proteína + 1 Verdura",     "tags": []},
+      {"nombre": "Pechuga de pollo a la plancha (120g)",     "info": "Equivalente: 1.5 Proteína",               "tags": ["carne"]},
+      {"nombre": "Atún en agua con ensalada (120g)",         "info": "Equivalente: 1.5 Proteína",               "tags": ["pescado"]},
+      {"nombre": "Hamburguesa de frijol negro",              "info": "Equivalente: 1.5 Proteína + 1 Carb",      "tags": ["gluten"]},
+      {"nombre": "Camarones salteados con verduras",         "info": "Equivalente: 1.5 Proteína + 1 Verdura",   "tags": ["pescado"]},
+      {"nombre": "Tempeh al ajillo con brócoli",             "info": "Equivalente: 1.5 Proteína + 1 Verdura",   "tags": ["soya"]},
+    ],
+    "Cena": [
+      {"nombre": "Sándwich de pan integral con pavo",        "info": "Equivalente: 1 Carbohidrato + 1 Proteína","tags": ["carne", "gluten"]},
+      {"nombre": "Quesadilla con tortilla de maíz (1 pza)",  "info": "Equivalente: 1 Carbohidrato + 1 Proteína","tags": ["lacteo"]},
+      {"nombre": "Taza de cereal de fibra con leche light",  "info": "Equivalente: 1 Carb + 0.5 Proteína",     "tags": ["gluten", "lacteo"]},
+      {"nombre": "Rollitos de jamón con queso cottage",      "info": "Equivalente: 1 Proteína + Lácteo",        "tags": ["carne", "lacteo"]},
+      {"nombre": "Sopa de verduras con tofu",                "info": "Equivalente: 1 Proteína + 1 Verdura",     "tags": ["soya"]},
+      {"nombre": "Wrap vegetal con hummus y espinacas",      "info": "Equivalente: 1 Carb + 1 Grasa",           "tags": ["gluten"]},
+      {"nombre": "Crema de elote light",                     "info": "Equivalente: 1 Carb",                     "tags": []},
+      {"nombre": "Tostadas de frijol con nopal asado",       "info": "Equivalente: 1 Carb + 1 Proteína",        "tags": []},
+      {"nombre": "Ensalada de garbanzos con pepino",         "info": "Equivalente: 1 Proteína + Libre",         "tags": []},
+      {"nombre": "Tortilla de maíz con aguacate y jitomate", "info": "Equivalente: 1 Carb + 1 Grasa",           "tags": []},
+    ],
+  };
+
   static List<Map<String, String>> obtenerEquivalentes(
     String tiempoComida,
-    String dia,
-  ) {
-    final mapa = {
-      "Desayuno": [
-        {
-          "nombre": "Omelette de 2 claras con champiñones",
-          "info": "Equivalente: 1 Proteína + 1 Verdura",
-        },
-        {
-          "nombre": "Yogurt Griego con 5 almendras",
-          "info": "Equivalente: 1 Proteína + 1 Grasa",
-        },
-        {
-          "nombre": "2 Huevos cocidos con espinacas",
-          "info": "Equivalente: 1 Proteína + 1 Verdura",
-        },
-        {
-          "nombre": "Queso Panela asado (60g) con nopal",
-          "info": "Equivalente: 1 Proteína + 1 Fibra",
-        },
-      ],
-      "Colación": [
-        {"nombre": "10 mitades de nuez", "info": "Equivalente: 1 Grasa"},
-        {"nombre": "1 Taza de Jícama con limón", "info": "Equivalente: Libre"},
-        {"nombre": "1 Pera pequeña", "info": "Equivalente: 1 Fruta"},
-        {"nombre": "1 Gelatina light", "info": "Equivalente: Libre"},
-      ],
-      "Comida": [
-        {
-          "nombre": "Filete de Pescado (120g) al vapor",
-          "info": "Equivalente: 1.5 Proteína",
-        },
-        {
-          "nombre": "Carne de res magra (100g) asada",
-          "info": "Equivalente: 1.5 Proteína",
-        },
-        {
-          "nombre": "Tacos de pechuga de pavo (3 pzas)",
-          "info": "Equivalente: 1.5 Proteína + Carbohidrato",
-        },
-        {
-          "nombre": "Salmón a la plancha con espárragos",
-          "info": "Equivalente: 2 Proteínas + Fibra",
-        },
-      ],
-      "Cena": [
-        {
-          "nombre": "Sándwich de pan integral con pavo",
-          "info": "Equivalente: 1 Carbohidrato + 1 Proteína",
-        },
-        {
-          "nombre": "Quesadilla con tortilla de maíz (1 pza)",
-          "info": "Equivalente: 1 Carbohidrato + 1 Proteína",
-        },
-        {
-          "nombre": "Taza de cereal de fibra con leche light",
-          "info": "Equivalente: 1 Carb + 0.5 Proteína",
-        },
-        {
-          "nombre": "Rollitos de jamón con queso cottage",
-          "info": "Equivalente: 1 Proteína + Lácteo",
-        },
-      ],
-    };
-    return mapa[tiempoComida] ??
-        [
-          {"nombre": "Opción Genérica", "info": "Equivalencia estándar"},
-        ];
+    String dia, {
+    List<String> restricciones = const [],
+    bool preferencia = true,
+    int cantidad = 3,
+  }) {
+    final todos = _banco[tiempoComida] ?? [];
+    final tagsExcluir = [...restricciones];
+    if (!preferencia) tagsExcluir.addAll(['carne', 'pescado']);
+
+    final filtrados = todos.where((item) {
+      final tags = List<String>.from(item['tags'] as List);
+      return !tags.any((tag) => tagsExcluir.contains(tag));
+    }).toList();
+
+    final fuente = filtrados.isEmpty ? todos : filtrados;
+    fuente.shuffle(Random());
+
+    return fuente.take(cantidad).map((item) => {
+      "nombre": item["nombre"] as String,
+      "info": item["info"] as String,
+    }).toList();
   }
 }

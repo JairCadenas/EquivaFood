@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_service.dart';
+import 'Restricciones.dart';
 
 class Perfil extends StatefulWidget {
   const Perfil({super.key});
@@ -21,10 +22,13 @@ class _PerfilState extends State<Perfil> {
   final _estaturaController = TextEditingController();
 
   String _correoUsuario = '';
-  String? _avatarUrl; // URL de la imagen guardada en Supabase
-  File? _imageFile; // Imagen nueva seleccionada localmente
+  String? _avatarUrl;
+  File? _imageFile;
   bool _isLoading = false;
   bool _isLoadingData = true;
+
+  Set<String> _restricciones = {};
+  bool _preferencia = true; 
 
   @override
   void initState() {
@@ -41,44 +45,42 @@ class _PerfilState extends State<Perfil> {
     super.dispose();
   }
 
-  // Carga los datos actuales del usuario desde Supabase
   Future<void> _cargarDatosUsuario() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _correoUsuario = prefs.getString('userEmail') ?? '';
 
-      if (_correoUsuario.isEmpty) throw Exception('No hay sesión activa');
+      if (_correoUsuario.isNotEmpty) {
+        final data = await Supabase.instance.client
+            .from('usuario')
+            .select()
+            .eq('correo', _correoUsuario)
+            .single();
 
-      final data = await Supabase.instance.client
-          .from('usuario')
-          .select()
-          .eq('correo', _correoUsuario)
-          .single();
+        setState(() {
+          _nombreController.text = (data['nombre'] ?? '').toString();
+          _edadController.text = (data['edad'] ?? '').toString();
+          _pesoController.text = (data['peso'] ?? '').toString();
+          _estaturaController.text = (data['estatura'] ?? '').toString();
+          _avatarUrl = data['avatar_url'];
 
-      setState(() {
-        _nombreController.text = data['nombre'] ?? '';
-        _edadController.text = data['edad']?.toString() ?? '';
-        _pesoController.text = data['peso']?.toString() ?? '';
-        _estaturaController.text = data['estatura']?.toString() ?? '';
-        _avatarUrl = data['avatar_url'];
-        _isLoadingData = false;
-      });
+          _preferencia = data['preferencia'] ?? true; 
+
+          // Cargar las restricciones de SharedPreferences de forma segura
+          final listRestricciones = prefs.getStringList('restricciones') ?? [];
+          _restricciones = listRestricciones.toSet();
+
+          _isLoadingData = false;
+        });
+      }
     } catch (e) {
       setState(() => _isLoadingData = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al cargar datos: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      debugPrint('Error cargando datos del perfil: $e');
     }
   }
 
-  // Permite seleccionar una nueva imagen desde la galería
   Future<void> _seleccionarImagen() async {
-    final picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
+    final XFile? pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 50,
     );
@@ -90,47 +92,65 @@ class _PerfilState extends State<Perfil> {
     }
   }
 
-  // Guarda los cambios del perfil, subiendo la imagen si fue modificada
+  // Sincroniza localmente y envía a la base de datos remota en tiempo real
   Future<void> _guardarCambios() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
     try {
-      // Si se eligió una nueva imagen, subirla primero a Supabase Storage
-      String? nuevaUrl = _avatarUrl;
+      setState(() => _isLoading = true);
+
+      final int edadFormateada = int.tryParse(_edadController.text.trim()) ?? 0;
+      final double pesoFormateado =
+          double.tryParse(_pesoController.text.trim()) ?? 0.0;
+      final double estaturaFormateada =
+          double.tryParse(_estaturaController.text.trim()) ?? 0.0;
+
+      String? nuevaAvatarUrl = _avatarUrl;
       if (_imageFile != null) {
-        nuevaUrl = await ApiService.subirImagen(_imageFile!, _correoUsuario);
+        nuevaAvatarUrl = await ApiService.subirImagen(
+          _imageFile!,
+          _correoUsuario,
+        );
       }
 
-      await ApiService.actualizarPerfil(
-        correo: _correoUsuario,
-        nombre: _nombreController.text.trim(),
-        edad: int.parse(_edadController.text.trim()),
-        peso: double.parse(_pesoController.text.trim().replaceAll(',', '.')),
-        estatura: double.parse(
-          _estaturaController.text.trim().replaceAll(',', '.'),
-        ),
-        avatarUrl: nuevaUrl,
-      );
+      // ── GUARDADO DIRECTO A LA COLUMNA DE TEXTO EN SUPABASE ──
+      await Supabase.instance.client
+          .from('usuario')
+          .update({
+            'nombre': _nombreController.text.trim(),
+            'edad': edadFormateada,
+            'peso': pesoFormateado,
+            'estatura': estaturaFormateada,
+            'avatar_url': nuevaAvatarUrl,
+            'restricciones': _restricciones.toList().toString(), // Guardado seguro compatible con columna text
+            'preferencia': _preferencia, 
+          })
+          .eq('correo', _correoUsuario);
+
+      // ── PERSISTENCIA LOCAL ──
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('restricciones', _restricciones.toList());
+      await prefs.setBool('preferencia', _preferencia); 
+      if (nuevaAvatarUrl != null) {
+        await prefs.setString('userAvatar', nuevaAvatarUrl);
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Perfil actualizado correctamente'),
-          backgroundColor: Colors.green,
+          content: Text('¡Perfil y preferencias actualizadas en la nube!'),
+          backgroundColor: Color(0xFF33D1C1),
         ),
       );
 
-      // Devuelve true para que PantallaPrincipal refresque los datos
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text('Error al actualizar: $e'),
+          backgroundColor: Colors.redAccent,
         ),
       );
     } finally {
@@ -138,166 +158,130 @@ class _PerfilState extends State<Perfil> {
     }
   }
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF33D1C1)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: const BorderSide(color: Color(0xFF33D1C1), width: 2),
-          ),
-        ),
-        validator:
-            validator ??
-            (value) => (value == null || value.isEmpty) ? 'Requerido' : null,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF33D1C1);
+    const primaryColor = Color(0xFF33D1C1);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Mi Perfil',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        elevation: 2,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoadingData
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(30.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Avatar interactivo para cambiar la foto de perfil
                     GestureDetector(
                       onTap: _seleccionarImagen,
                       child: Stack(
                         children: [
                           CircleAvatar(
-                            radius: 55,
-                            backgroundColor: const Color(0xFFF5F5F5),
+                            radius: 60,
+                            backgroundColor: Colors.grey[200],
                             backgroundImage: _imageFile != null
                                 ? FileImage(_imageFile!)
-                                : (_avatarUrl != null
-                                          ? NetworkImage(_avatarUrl!)
-                                          : null)
-                                      as ImageProvider?,
-                            child: (_imageFile == null && _avatarUrl == null)
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Colors.grey,
-                                  )
-                                : null,
+                                : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                                ? NetworkImage(_avatarUrl!)
+                                : const AssetImage('assets/default_avatar.png') as ImageProvider,
                           ),
                           Positioned(
                             bottom: 0,
                             right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: primaryColor,
+                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _correoUsuario,
-                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                    const SizedBox(height: 35),
+
+                    TextFormField(
+                      controller: _nombreController,
+                      decoration: InputDecoration(
+                        labelText: 'Nombre Completo',
+                        prefixIcon: const Icon(Icons.person_outline, color: primaryColor),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? 'Ingresa tu nombre' : null,
+                    ),
+                    const SizedBox(height: 20),
+
+                    TextFormField(
+                      controller: _edadController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Edad (años)',
+                        prefixIcon: const Icon(Icons.cake_outlined, color: primaryColor),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? 'Ingresa tu edad' : null,
+                    ),
+                    const SizedBox(height: 20),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _pesoController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              labelText: 'Peso (kg)',
+                              prefixIcon: const Icon(Icons.scale_outlined, color: primaryColor),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                            ),
+                            validator: (v) => v == null || v.isEmpty ? 'Ingresa tu peso' : null,
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _estaturaController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: InputDecoration(
+                              labelText: 'Estatura (m)',
+                              prefixIcon: const Icon(Icons.straighten_outlined, color: primaryColor),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                            ),
+                            validator: (v) => v == null || v.isEmpty ? 'Ingresa tu estatura' : null,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 30),
 
-                    _buildField(
-                      controller: _nombreController,
-                      label: 'Nombre completo',
-                      icon: Icons.badge_outlined,
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Restricciones y Preferencias', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
-                    _buildField(
-                      controller: _edadController,
-                      label: 'Edad',
-                      icon: Icons.cake_outlined,
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Requerido';
-                        final edad = int.tryParse(value);
-                        if (edad == null) return 'Ingresa un número válido';
-                        if (edad < 1) return 'La edad mínima es 1 año';
-                        if (edad > 120) return 'La edad máxima es 120 años';
-                        return null;
-                      },
-                    ),
-                    _buildField(
-                      controller: _pesoController,
-                      label: 'Peso (kg)',
-                      icon: Icons.monitor_weight_outlined,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Requerido';
-                        final peso = double.tryParse(
-                          value.replaceAll(',', '.'),
-                        );
-                        if (peso == null) return 'Ingresa un número válido';
-                        if (peso < 1) return 'El peso mínimo es 1 kg';
-                        if (peso > 635) return 'El peso máximo es 635 kg';
-                        return null;
-                      },
-                    ),
-                    _buildField(
-                      controller: _estaturaController,
-                      label: 'Estatura (cm/m)',
-                      icon: Icons.height_outlined,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Requerido';
-                        final val = double.tryParse(value.replaceAll(',', '.'));
-                        if (val == null) return 'Ingresa un número válido';
-                        // Acepta tanto cm (ej: 170) como metros (ej: 1.70)
-                        if (val < 0.5 && val > 0)
-                          return 'Estatura mínima: 0.5 m o 50 cm';
-                        if (val > 2.72 && val <= 10)
-                          return 'Estatura máxima: 2.72 m';
-                        if (val > 10 && val < 50)
-                          return 'Ingresa en cm (ej: 170) o m (ej: 1.70)';
-                        if (val > 272) return 'Estatura máxima: 272 cm';
-                        return null;
-                      },
-                    ),
+                    const SizedBox(height: 15),
 
-                    const SizedBox(height: 20),
+                    RestriccionesWidget(
+                      seleccionadas: _restricciones,
+                      preferencia: _preferencia, 
+                      onRestriccionesChanged: (v) => setState(() => _restricciones = v),
+                      onPreferenciaChanged: (v) => setState(() => _preferencia = v), 
+                    ),
+                    
+                    const SizedBox(height: 35),
 
                     SizedBox(
                       width: double.infinity,
@@ -307,22 +291,12 @@ class _PerfilState extends State<Perfil> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                           elevation: 3,
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                'Guardar Cambios',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Guardar Cambios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],

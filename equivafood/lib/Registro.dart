@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api_service.dart';
+import 'Restricciones.dart';
 
 class Registro extends StatefulWidget {
   const Registro({super.key});
@@ -21,7 +22,9 @@ class _RegistroState extends State<Registro> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // Variables para la gestión de la imagen de perfil
+  Set<String> _restricciones = {};
+  bool _preferencia = true; // CORREGIDO: nombre unificado
+
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
@@ -36,7 +39,6 @@ class _RegistroState extends State<Registro> {
     super.dispose();
   }
 
-  // Permite al usuario seleccionar una imagen de la galería
   Future<void> _seleccionarImagen() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -50,7 +52,7 @@ class _RegistroState extends State<Registro> {
     }
   }
 
-  Future<void> _handleRegistro() async {
+  Future<void> _handleREGISTRO() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -58,7 +60,6 @@ class _RegistroState extends State<Registro> {
     try {
       String? avatarUrl;
 
-      // Subida de imagen a Supabase Storage antes de crear el registro del usuario
       if (_imageFile != null) {
         avatarUrl = await ApiService.subirImagen(
           _imageFile!,
@@ -66,7 +67,6 @@ class _RegistroState extends State<Registro> {
         );
       }
 
-      // Creación del registro en la base de datos incluyendo la URL del avatar
       final result = await ApiService.registro(
         nombre: _nombreController.text.trim(),
         edad: int.parse(_edadController.text.trim()),
@@ -77,6 +77,8 @@ class _RegistroState extends State<Registro> {
         correo: _correoController.text.trim().toLowerCase(),
         password: _passwordController.text.trim(),
         avatarUrl: avatarUrl,
+        restricciones: _restricciones.toList(), 
+        preferencia: _preferencia, // CORREGIDO: variable unificada hacia ApiService
       );
 
       if (!mounted) return;
@@ -150,7 +152,6 @@ class _RegistroState extends State<Registro> {
             key: _formKey,
             child: Column(
               children: [
-                // Avatar interactivo para seleccionar foto al registrarse
                 GestureDetector(
                   onTap: _seleccionarImagen,
                   child: CircleAvatar(
@@ -169,10 +170,7 @@ class _RegistroState extends State<Registro> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  "Crear Nueva Cuenta",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                "Crear Nueva Cuenta".TextM(fontSize: 20, fontWeight: FontWeight.bold),
                 const SizedBox(height: 30),
 
                 _buildField(
@@ -269,13 +267,36 @@ class _RegistroState extends State<Registro> {
                   ],
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 25),
+
+                const Divider(),
+                const SizedBox(height: 10),
+                const Text(
+                  'Restricciones alimenticias',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Opcional — puedes modificarlas después en tu perfil.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 14),
+                RestriccionesWidget(
+                  seleccionadas: _restricciones,
+                  preferencia: _preferencia, // CORREGIDO: variable unificada
+                  onRestriccionesChanged: (v) =>
+                      setState(() => _restricciones = v),
+                  onPreferenciaChanged: (v) =>
+                      setState(() => _preferencia = v), // CORREGIDO
+                ),
+
+                const SizedBox(height: 30),
 
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegistro,
+                    onPressed: _isLoading ? null : _handleREGISTRO,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       shape: RoundedRectangleBorder(
@@ -301,5 +322,11 @@ class _RegistroState extends State<Registro> {
         ),
       ),
     );
+  }
+}
+
+extension on String {
+  Widget TextM({double? fontSize, FontWeight? fontWeight}) {
+    return Text(this, style: TextStyle(fontSize: fontSize, fontWeight: fontWeight));
   }
 }

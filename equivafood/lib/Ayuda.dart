@@ -39,7 +39,17 @@ class Ayuda extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // --- BLOQUE DE PREGUNTAS ---
+            // --- BLOQUE DE PREGUNTAS (FAQ) ---
+            _buildFAQItem(
+              '¿Cómo puedo elegir mi preferencia o restricciones de alimentos?',
+              'Puedes hacerlo desde tu Perfil (tocando tu foto en la pantalla principal). En la sección "Restricciones alimenticias" puedes seleccionar si deseas una dieta Omnívora o Vegetal, así como marcar tus alergias (Gluten, Lácteos, Frutos secos, etc.). El menú principal filtrará automáticamente las alternativas según lo que elijas.',
+              primaryColor,
+            ),
+            _buildFAQItem(
+              '¿Cómo puedo visualizar la receta completa de un alimento?',
+              'En la pantalla principal, toca cualquier tiempo de comida (como Desayuno o Comida) para desplegar sus "Alternativas Sugeridas". Al lado de cada opción verás el icono de un libro verde; tócalo y la aplicación te llevará de inmediato a una pantalla exclusiva con los ingredientes medidos en gramos y las instrucciones paso a paso.',
+              primaryColor,
+            ),
             _buildFAQItem(
               '¿Cómo puedo cambiar mi contraseña?',
               'Si no puedes acceder, usa la opción "¿Olvidé mi contraseña?" en la pantalla de inicio. Si ya iniciaste sesión, pronto habilitaremos un botón de cambio directo en tu perfil.',

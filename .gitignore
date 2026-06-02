@@ -1,0 +1,35 @@
+# IDE Configuration Files
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Generated Images and Test Files
+Gemini_Generated_Image_*.png
+
+# Practice and Preparation Folders
+Preparativos*/
+PreparativosJair/
+
+# Environment and Secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Build and Dependencies
+build/
+.dart_tool/
+.flutter-plugins-dependencies
+pubspec.lock
+
+# Database backups (keep .sql files for version control)
+*.db
+*.sqlite
+*.sqlite3
