@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
+import '../services/api_service.dart';
 
 class CambioContrasena extends StatefulWidget {
   final String correo;
   final String codigo;
-
   const CambioContrasena({
     super.key,
     required this.correo,
