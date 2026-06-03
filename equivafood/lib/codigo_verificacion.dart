@@ -1,57 +1,46 @@
 import 'package:flutter/material.dart';
-import 'CodigoVerificacion.dart';
+import 'cambio_contrasena.dart';
 import 'api_service.dart';
 
-class RecuperarContrasenaScreen extends StatefulWidget {
-  const RecuperarContrasenaScreen({super.key});
+class CodigoVerificacion extends StatefulWidget {
+  final String correo;
+
+  const CodigoVerificacion({super.key, required this.correo});
 
   @override
-  State<RecuperarContrasenaScreen> createState() =>
-      _RecuperarContrasenaScreenState();
+  State<CodigoVerificacion> createState() => _CodigoVerificacionState();
 }
 
-class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
-  final _correoController = TextEditingController();
+class _CodigoVerificacionState extends State<CodigoVerificacion> {
+  final _codigoController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _correoController.dispose();
+    _codigoController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleEnviarCodigo() async {
-    // 1. Validar formato de correo antes de enviar
+  Future<void> _handleConfirmarCodigo() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // 2. Llamada al servicio para generar el código y enviar el correo real
-      await ApiService.enviarCodigoRecuperacion(
-        correo: _correoController.text
-            .trim()
-            .toLowerCase(), // Limpieza de datos
+      await ApiService.verificarCodigo(
+        correo: widget.correo,
+        codigo: _codigoController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // 3. Feedback visual de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Código enviado. Revisa tu bandeja de entrada.'),
-          backgroundColor: Color(0xFF33D1C1),
-          duration: Duration(seconds: 4),
-        ),
-      );
-
-      // 4. Navegar a la pantalla del código
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CodigoVerificacion(
-            correo: _correoController.text.trim().toLowerCase(),
+          builder: (_) => CambioContrasena(
+            correo: widget.correo,
+            codigo: _codigoController.text.trim(),
           ),
         ),
       );
@@ -74,11 +63,6 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 40.0),
@@ -87,94 +71,106 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 80),
+
+                // --- TÍTULO ---
                 const Text(
-                  'Recupera tu contraseña',
+                  'Codigo de verificación',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     fontStyle: FontStyle.italic,
-                    color: primaryColor,
                   ),
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Te enviaremos un código de 6 dígitos para validar tu identidad.',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
+
                 const SizedBox(height: 60),
 
-                // --- CAMPO CORREO ---
+                // --- CAMPO CÓDIGO ---
                 TextFormField(
-                  controller: _correoController,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _codigoController,
+                  keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Correo electrónico',
-                    hintText: 'ejemplo@correo.com',
-                    prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
-                    labelStyle: TextStyle(color: Colors.grey),
+                    hintText: 'Ingresa tu código',
+                    hintStyle: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: Colors.grey),
                     ),
                     focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: primaryColor, width: 2),
+                      borderSide: BorderSide(color: primaryColor),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu correo';
+                      return 'Por favor ingresa el código';
                     }
-                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                    if (!emailRegex.hasMatch(value)) {
-                      return 'Formato de correo inválido';
+                    if (value.length < 4) {
+                      return 'El código debe tener al menos 4 dígitos';
                     }
                     return null;
                   },
                 ),
 
-                const SizedBox(height: 60),
+                const SizedBox(height: 50),
 
                 // --- BOTONES ---
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     // REGRESAR
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-
-                    // ENVIAR CÓDIGO
                     SizedBox(
-                      width: 160,
+                      width: 140,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleEnviarCodigo,
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
-                          elevation: 4,
+                          elevation: 3,
+                        ),
+                        child: const Text(
+                          'Regresar',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // CONFIRMAR CÓDIGO
+                    SizedBox(
+                      width: 140,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleConfirmarCodigo,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          elevation: 3,
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                                width: 24,
-                                height: 24,
+                                width: 22,
+                                height: 22,
                                 child: CircularProgressIndicator(
                                   color: Colors.white,
-                                  strokeWidth: 2,
+                                  strokeWidth: 2.5,
                                 ),
                               )
                             : const Text(
-                                'Enviar Código',
+                                'Confirmar Codigo',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -183,6 +179,8 @@ class _RecuperarContrasenaScreenState extends State<RecuperarContrasenaScreen> {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 40),
               ],
             ),
           ),

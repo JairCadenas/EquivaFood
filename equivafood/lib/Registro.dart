@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'api_service.dart';
-import 'Restricciones.dart';
+import 'restricciones.dart';
 
 class Registro extends StatefulWidget {
   const Registro({super.key});
@@ -77,8 +77,9 @@ class _RegistroState extends State<Registro> {
         correo: _correoController.text.trim().toLowerCase(),
         password: _passwordController.text.trim(),
         avatarUrl: avatarUrl,
-        restricciones: _restricciones.toList(), 
-        preferencia: _preferencia, // CORREGIDO: variable unificada hacia ApiService
+        restricciones: _restricciones.toList(),
+        preferencia:
+            _preferencia, // CORREGIDO: variable unificada hacia ApiService
       );
 
       if (!mounted) return;
@@ -170,7 +171,10 @@ class _RegistroState extends State<Registro> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                "Crear Nueva Cuenta".TextM(fontSize: 20, fontWeight: FontWeight.bold),
+                "Crear Nueva Cuenta".TextM(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 const SizedBox(height: 30),
 
                 _buildField(
@@ -327,6 +331,9 @@ class _RegistroState extends State<Registro> {
 
 extension on String {
   Widget TextM({double? fontSize, FontWeight? fontWeight}) {
-    return Text(this, style: TextStyle(fontSize: fontSize, fontWeight: fontWeight));
+    return Text(
+      this,
+      style: TextStyle(fontSize: fontSize, fontWeight: fontWeight),
+    );
   }
 }

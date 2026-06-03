@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_service.dart';
-import 'Restricciones.dart';
+import 'restricciones.dart';
 
 class Perfil extends StatefulWidget {
   const Perfil({super.key});
@@ -28,7 +28,7 @@ class _PerfilState extends State<Perfil> {
   bool _isLoadingData = true;
 
   Set<String> _restricciones = {};
-  bool _preferencia = true; 
+  bool _preferencia = true;
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _PerfilState extends State<Perfil> {
           _estaturaController.text = (data['estatura'] ?? '').toString();
           _avatarUrl = data['avatar_url'];
 
-          _preferencia = data['preferencia'] ?? true; 
+          _preferencia = data['preferencia'] ?? true;
 
           // Cargar las restricciones de SharedPreferences de forma segura
           final listRestricciones = prefs.getStringList('restricciones') ?? [];
@@ -122,15 +122,17 @@ class _PerfilState extends State<Perfil> {
             'peso': pesoFormateado,
             'estatura': estaturaFormateada,
             'avatar_url': nuevaAvatarUrl,
-            'restricciones': _restricciones.toList().toString(), // Guardado seguro compatible con columna text
-            'preferencia': _preferencia, 
+            'restricciones': _restricciones
+                .toList()
+                .toString(), // Guardado seguro compatible con columna text
+            'preferencia': _preferencia,
           })
           .eq('correo', _correoUsuario);
 
       // ── PERSISTENCIA LOCAL ──
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('restricciones', _restricciones.toList());
-      await prefs.setBool('preferencia', _preferencia); 
+      await prefs.setBool('preferencia', _preferencia);
       if (nuevaAvatarUrl != null) {
         await prefs.setString('userAvatar', nuevaAvatarUrl);
       }
@@ -180,7 +182,10 @@ class _PerfilState extends State<Perfil> {
       body: _isLoadingData
           ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 30.0,
+              ),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -196,7 +201,8 @@ class _PerfilState extends State<Perfil> {
                                 ? FileImage(_imageFile!)
                                 : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
                                 ? NetworkImage(_avatarUrl!)
-                                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                : const AssetImage('assets/default_avatar.png')
+                                      as ImageProvider,
                           ),
                           Positioned(
                             bottom: 0,
@@ -204,7 +210,11 @@ class _PerfilState extends State<Perfil> {
                             child: CircleAvatar(
                               radius: 18,
                               backgroundColor: primaryColor,
-                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ],
@@ -216,10 +226,16 @@ class _PerfilState extends State<Perfil> {
                       controller: _nombreController,
                       decoration: InputDecoration(
                         labelText: 'Nombre Completo',
-                        prefixIcon: const Icon(Icons.person_outline, color: primaryColor),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                        prefixIcon: const Icon(
+                          Icons.person_outline,
+                          color: primaryColor,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Ingresa tu nombre' : null,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Ingresa tu nombre' : null,
                     ),
                     const SizedBox(height: 20),
 
@@ -228,10 +244,16 @@ class _PerfilState extends State<Perfil> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Edad (años)',
-                        prefixIcon: const Icon(Icons.cake_outlined, color: primaryColor),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                        prefixIcon: const Icon(
+                          Icons.cake_outlined,
+                          color: primaryColor,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30.0),
+                        ),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Ingresa tu edad' : null,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Ingresa tu edad' : null,
                     ),
                     const SizedBox(height: 20),
 
@@ -240,26 +262,44 @@ class _PerfilState extends State<Perfil> {
                         Expanded(
                           child: TextFormField(
                             controller: _pesoController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Peso (kg)',
-                              prefixIcon: const Icon(Icons.scale_outlined, color: primaryColor),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                              prefixIcon: const Icon(
+                                Icons.scale_outlined,
+                                color: primaryColor,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
                             ),
-                            validator: (v) => v == null || v.isEmpty ? 'Ingresa tu peso' : null,
+                            validator: (v) => v == null || v.isEmpty
+                                ? 'Ingresa tu peso'
+                                : null,
                           ),
                         ),
                         const SizedBox(width: 15),
                         Expanded(
                           child: TextFormField(
                             controller: _estaturaController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: InputDecoration(
                               labelText: 'Estatura (m)',
-                              prefixIcon: const Icon(Icons.straighten_outlined, color: primaryColor),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                              prefixIcon: const Icon(
+                                Icons.straighten_outlined,
+                                color: primaryColor,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
                             ),
-                            validator: (v) => v == null || v.isEmpty ? 'Ingresa tu estatura' : null,
+                            validator: (v) => v == null || v.isEmpty
+                                ? 'Ingresa tu estatura'
+                                : null,
                           ),
                         ),
                       ],
@@ -270,17 +310,25 @@ class _PerfilState extends State<Perfil> {
                     const SizedBox(height: 10),
                     const Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Restricciones y Preferencias', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Restricciones y Preferencias',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 15),
 
                     RestriccionesWidget(
                       seleccionadas: _restricciones,
-                      preferencia: _preferencia, 
-                      onRestriccionesChanged: (v) => setState(() => _restricciones = v),
-                      onPreferenciaChanged: (v) => setState(() => _preferencia = v), 
+                      preferencia: _preferencia,
+                      onRestriccionesChanged: (v) =>
+                          setState(() => _restricciones = v),
+                      onPreferenciaChanged: (v) =>
+                          setState(() => _preferencia = v),
                     ),
-                    
+
                     const SizedBox(height: 35),
 
                     SizedBox(
@@ -291,12 +339,22 @@ class _PerfilState extends State<Perfil> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                           elevation: 3,
                         ),
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Guardar Cambios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text(
+                                'Guardar Cambios',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],

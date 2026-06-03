@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
-import 'PlanAlimenticio.dart';
-import 'Perfil.dart';
-import 'Ayuda.dart';
+import 'plan_alimenticio.dart';
+import 'perfil.dart';
+import 'ayuda.dart';
 import 'api_service.dart';
-import 'Restricciones.dart';
-import 'Recetas.dart';
+import 'restricciones.dart';
+import 'recetas.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
