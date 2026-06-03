@@ -4,10 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Importa tus archivos
-import 'registro.dart';
-import 'recuperar_contrasena.dart';
-import 'pantalla_principal.dart';
-import 'api_service.dart';
+import 'screens/registro_screen.dart';
+import 'screens/recuperar_contrasena_screen.dart';
+import 'screens/pantalla_principal_screen.dart';
+import 'services/api_service.dart';
 
 void main() async {
   // 1. Aseguramos que Flutter esté listo

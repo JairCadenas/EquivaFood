@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'api_service.dart';
+import 'services/api_service.dart';
 import 'restricciones.dart';
 
 class Perfil extends StatefulWidget {

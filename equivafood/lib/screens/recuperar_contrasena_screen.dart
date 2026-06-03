@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'codigo_verificacion.dart';
-import 'api_service.dart';
+import 'codigo_verificacion_screen.dart';
+import '../services/api_service.dart';
 
 class RecuperarContrasenaScreen extends StatefulWidget {
   const RecuperarContrasenaScreen({super.key});
