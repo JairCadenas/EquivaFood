@@ -4,41 +4,6 @@ Documento que detalla los problemas identificados en el repositorio y su orden d
 
 ---
 
-### 3.2 Reorganizar Estructura de Carpetas
-
-**Descripción del Problema:**
-- Todos los archivos están en la carpeta `lib/` sin categorización
-- No existe separación clara entre pantallas, servicios, modelos y utilidades
-- Dificulta el mantenimiento y escalabilidad del proyecto
-
-**Estructura Recomendada:**
-```
-lib/
-├── main.dart
-├── screens/
-│   |
-│   ├── registro_screen.dart (renombrado de Registro.dart)
-│   ├── recuperar_contrasena_screen.dart
-│   ├── codigo_verificacion_screen.dart
-│   ├── cambio_contrasena_screen.dart
-│   └── pantalla_principal_screen.dart
-├── services/
-│   └── api_service.dart
-├── models/
-│   └── (modelos de datos si existen)
-└── utils/
-    └── (utilidades comunes si existen)
-```
-
-**Acciones Requeridas:**
-
-1. Crear estructura de carpetas
-2. Mover y renombrar archivos según la nueva estructura
-3. Actualizar todas las importaciones
-4. Hacer commit
-
----
-
 ## Prioridad 4: Baja (Documentación y Mantenimiento)
 
 ### 4.1 Crear README.md Completo
