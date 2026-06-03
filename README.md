@@ -488,16 +488,6 @@ in the Software without restriction...
 
 ---
 
-## 🔄 Versiones
-
-### v1.0.0 (Proyecto Final)
-- Autenticación inicial
-- Base de datos de alimentos
-- Interfaz básica
-- Integración con Supabase
-
-Ver [CHANGELOG.md](CHANGELOG.md) para más detalles.
-
 ---
 
 <div align="center">
